@@ -7,6 +7,7 @@ import { icon } from './icons.js';
 import { openAddFood, openFoodDetail, mealForNow } from './food.js';
 import { logWeight, weightStats } from './weight.js';
 import { dueNow } from './reminders.js';
+import './ai.js';
 
 // High-protein / calorie-dense staples the coach can suggest
 const PROTEIN_PICKS = [
@@ -119,6 +120,7 @@ export function renderToday() {
   `, { ico: 'calendar' })}
 
   ${win('Log Food', `
+    ${btn('Snap a photo - AI logs it', 'ai-open', { cls: 'primary wide ai-cta', ico: 'camera', data: `data-meal="${mealForNow()}"` })}
     <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}">${icon('burger', 16)}<span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
     ${sug.length ? `<div class="sub-head">Coach says: ${left.p > 20 ? `you need <b>${r0(left.p)}g protein</b>` : `<b>${fmt(left.cal)} kcal</b> left`}. Try:</div>
       <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · ${r0(f.p)}g P</small><b>+</b></button>`).join('')}</div>` : ''}

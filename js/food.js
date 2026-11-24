@@ -4,6 +4,7 @@ import { FOODS, FOOD_CATEGORIES } from './foods.js';
 import { dayKey, addDays, prettyDay, esc, r0, r1, num, fmt, uid, buzz } from './util.js';
 import { win, group, bar, btn, field, numInput, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, promptBox, formData } from './ui.js';
 import { icon } from './icons.js';
+import { openAI } from './ai.js';
 
 export const view = { date: dayKey() };
 
@@ -59,7 +60,7 @@ export function renderFood() {
       </div>
     </div>
     ${meals}
-    <div class="btn-row">${btn('Quick add calories', 'quick-add', { data: `data-meal="${mealForNow()}"` })}${btn('My foods', 'my-foods')}</div>
+    <div class="btn-row">${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}${btn('Quick add calories', 'quick-add', { data: `data-meal="${mealForNow()}"` })}${btn('My foods', 'my-foods')}</div>
   `, { ico: 'burger' });
 }
 
@@ -165,7 +166,8 @@ function renderAddFood() {
       <input id="af-q" class="inp grow" type="search" placeholder="Search foods..." value="${esc(af.q)}" data-input="af-q" autocomplete="off" enterkeyhint="search">
     </div>
     <div class="btn-row tight">
-      ${btn('Scan', 'scan-barcode', { ico: 'phone' })}
+      ${btn('AI photo', 'af-ai', { ico: 'camera', cls: 'primary' })}
+      ${btn('Barcode', 'scan-barcode', { ico: 'phone' })}
       ${btn('Quick add', 'quick-add-af')}
       ${btn('Create food', 'create-food')}
     </div>
@@ -205,6 +207,7 @@ on({
     if (f) openFoodDetail(f, { date: af.date, meal: af.meal });
   },
   'quick-add-af': () => openQuickAdd(af.meal, af.date),
+  'af-ai': () => openAI(af.meal, af.date),
   'create-food': () => openCreateFood({ name: af.q.trim() }),
   'search-online': () => searchOnline(af.q.trim()),
   'scan-barcode': () => openScanner(),
@@ -452,7 +455,8 @@ export async function lookupBarcode(code) {
 
 // ================= Barcode scanner =================
 let scanStop = null;
-const SCAN_LIB = 'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js';
+// Bundled locally (not a CDN) so no third-party script ever runs inside the app
+const SCAN_LIB = 'js/vendor/html5-qrcode.min.js';
 
 function loadScript(src) {
   return new Promise((res, rej) => {

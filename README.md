@@ -10,6 +10,7 @@ It installs to your phone's home screen like a real app, works offline, and upda
 | Screen | Features |
 | --- | --- |
 | **Today** | Daily weigh-in box, calories/protein/carbs/fat progress bars, water tracker, one-tap meal logging, "Coach says" food suggestions to close your protein/calorie gap, today's workout |
+| **AI Food Scanner** | Snap a photo and/or describe a meal; Claude lists each item with estimated calories, protein, carbs and fat. You review and edit before adding. Needs your own Claude API key |
 | **Food** | Breakfast/Lunch/Dinner/Snacks diary, 140+ built-in foods (incl. fast food), online search (Open Food Facts), barcode scanner, Recent, Favorites, saved meals, copy yesterday's meal, quick add, custom foods |
 | **Gym** | 4-day DE/DT off-season program (power cleans, squats, bench, get-offs, hand fighting, neck work…), live workout logger (sets × reps × weight), "last time" numbers, progressive-overload suggestions, auto rest timer, PR detection, coaching cues, plate calculator, editable program |
 | **Weight** | Daily log, 7-day average, pixel chart, goal progress, weekly trend, projected goal date |
@@ -37,6 +38,16 @@ iPhones don't let websites schedule alarms on their own, so the app gives you tw
   Only the reminder text ("Log lunch") is sent. Food and weight data never leave the phone.
 - **Calendar file:** **Reminders → Download calendar file** adds repeating events with alerts to your calendar.
 
+## AI Food Scanner
+
+Tap **Snap a photo - AI logs it** on Today (also in Food, Add Food, and the Start menu). The photo is shrunk to about 1 MP on the phone,
+then sent with your description straight to the Claude API (`claude-opus-5-5` by default; Sonnet 5.5 and Haiku 5.5 are selectable in Control Panel).
+The answer comes back as structured JSON (`output_config.format`), with server-side refusal fallback enabled on Opus/Sonnet.
+
+Setup: create an API key at **platform.claude.com** (Claude Console) with a little credit, and paste it into the scanner or **Control Panel → AI Food Scanner**.
+Cost is roughly 2-3 cents per photo on Opus 5.5, and much less on Haiku. The key is stored in its own `localStorage` entry on the phone and is not part of backups.
+Set a monthly spend limit in the Console. The app shows this month's scans and estimated spend.
+
 ## Updating
 
 Every push to the deployed branch updates the live site. The installed app checks for updates when it opens and shows
@@ -48,6 +59,8 @@ Every push to the deployed branch updates the live site. The installed app check
 
 Plain HTML/CSS/JS ES modules with no build step and no dependencies. A service worker makes it work offline, and data is stored in `localStorage`.
 Fonts: DotGothic16 and VT323 (SIL Open Font License). Food search: [Open Food Facts](https://world.openfoodfacts.org) (ODbL).
-Barcode scanning uses the browser's BarcodeDetector, or loads `html5-qrcode` on demand.
+Barcode scanning uses the browser's BarcodeDetector, or the bundled `html5-qrcode` (Apache-2.0).
+AI uses the official `@anthropic-ai/sdk` (Apache-2.0), bundled into `js/vendor/anthropic-sdk.js` with esbuild and loaded only when the scanner is used.
+No third-party scripts load at runtime.
 
 Test locally with `python3 -m http.server` and open http://localhost:8000.

@@ -6,8 +6,9 @@ import { dayKey, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid
 import { win, group, btn, field, numInput, select, dayPicker, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, formData } from './ui.js';
 import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
+import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 
 export const THEMES = {
   classic: 'Classic Teal',
@@ -72,6 +73,8 @@ export function renderSettings() {
         ${field('Water oz', numInput('water', S.targets.water))}</div>
         <div class="btn-row">${btn('Save targets', 't-save', { cls: 'primary grow', type: 'submit' })}</div></form>`}
       <p class="muted small">Coach or nutritionist gave you numbers? Turn off auto and type them in.</p>`)}
+
+    ${aiSettingsGroup()}
 
     ${group('Reminders', `<p>Weigh-in, meal, and gym reminders that skip school and work hours.</p>${btn('Open Reminders', 'nav', { data: 'data-to="#/reminders"', ico: 'bell', cls: 'wide' })}`)}
 

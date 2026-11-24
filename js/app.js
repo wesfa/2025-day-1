@@ -11,6 +11,7 @@ import { renderSettings, renderReminders, applyTheme, openInstallHelp, APP_VERSI
 import { renderWizard, setWizardDone } from './wizard.js';
 import { syncPush } from './reminders.js';
 import './report.js';
+import { openAI } from './ai.js';
 
 const SCREENS = {
   today: { render: renderToday, title: 'Today' },
@@ -88,6 +89,7 @@ function renderStart() {
       ${item('#/food', 'Food Diary', 'burger')}
       ${item('#/gym', 'Gym', 'dumbbell')}
       ${item('#/weight', 'Weight', 'scale')}
+      ${item('', 'AI Food Scanner', 'camera', 'sm-ai')}
       <div class="sm-sep"></div>
       ${item('', 'Weekly Report', 'trophy', 'sm-weekly')}
       ${item('#/reminders', 'Reminders', 'bell')}
@@ -117,6 +119,7 @@ on({
   'sm-plates': (el) => { toggleStart(false); actions['plate-calc'](el); },
   'sm-howto': () => { toggleStart(false); openInstallHelp(); },
   'sm-weekly': () => { toggleStart(false); actions.weekly(); },
+  'sm-ai': () => { toggleStart(false); openAI(); },
   'sm-install': async () => {
     toggleStart(false);
     if (!deferredInstall) { openInstallHelp(); return; }
