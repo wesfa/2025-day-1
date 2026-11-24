@@ -169,7 +169,9 @@ function routeChanged() {
 setNavigate((hash) => {
   toggleStart(false);
   closeAllModals();
-  if (location.hash !== hash) history.pushState(null, '', hash);
+  if (location.hash !== hash) {
+    try { history.pushState(null, '', hash); } catch (e) { lastHash = hash; location.hash = hash; }
+  }
   routeChanged();
   render();
 });
