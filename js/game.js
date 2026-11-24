@@ -177,7 +177,10 @@ function layout() {
   cv.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  L = { W, H, cell, bw, bx: Math.floor((W - bw) / 2), by: 4, ty: 4 + bw + 10, trayH, slotW: W / 3, ts: 0.5 };
+  const css = getComputedStyle(document.documentElement);
+  const v = (name, fb) => css.getPropertyValue(name).trim() || fb;
+  L = { W, H, cell, bw, bx: Math.floor((W - bw) / 2), by: 4, ty: 4 + bw + 10, trayH, slotW: W / 3, ts: 0.5,
+    face: v('--face', '#c0c0c0'), lo: v('--lo', '#808080'), hi: v('--hi', '#ffffff') };
 }
 
 // ---------- drawing ----------
@@ -220,7 +223,7 @@ function draw() {
   ctx.save();
   if (fx.shake > now) ctx.translate(Math.round((Math.random() - 0.5) * 4), Math.round((Math.random() - 0.5) * 4));
   // background + board well
-  ctx.fillStyle = '#c0c0c0'; ctx.fillRect(-4, -4, L.W + 8, L.H + 8);
+  ctx.fillStyle = L.face; ctx.fillRect(-4, -4, L.W + 8, L.H + 8);
   ctx.fillStyle = '#0b1f45'; ctx.fillRect(L.bx - 2, L.by - 2, L.bw + 4, L.bw + 4);
   for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
     const [x, y] = boardCell(r, c);
@@ -254,9 +257,10 @@ function draw() {
     }
   }
   // tray
-  ctx.fillStyle = '#b4b4b4'; ctx.fillRect(0, L.ty - 4, L.W, L.trayH + 4);
-  ctx.fillStyle = '#808080'; ctx.fillRect(0, L.ty - 4, L.W, 2);
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, L.ty - 2, L.W, 2);
+  ctx.fillStyle = L.face; ctx.fillRect(0, L.ty - 4, L.W, L.trayH + 4);
+  ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0, L.ty - 4, L.W, L.trayH + 4);
+  ctx.fillStyle = L.lo; ctx.fillRect(0, L.ty - 4, L.W, 2);
+  ctx.fillStyle = L.hi; ctx.fillRect(0, L.ty - 2, L.W, 2);
   g.tray.forEach((p, i) => {
     if (!p || (fx.drag && fx.drag.slot === i)) return;
     const sh = SHAPES[p.s];

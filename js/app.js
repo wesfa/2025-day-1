@@ -71,7 +71,7 @@ function renderTaskbar(r) {
   const act = activeWorkout();
   const gymRoute = act ? 'workout' : 'gym';
   $task.innerHTML = `
-    <button class="btn start-btn ${$start.classList.contains('open') ? 'on' : ''}" data-act="start">${icon('palm', 20)}<span>Start</span></button>
+    <button class="btn start-btn ${$start.classList.contains('open') ? 'on' : ''}" data-act="start">${icon(S.settings.theme === 'island' ? 'palm' : 'sun', 20)}<span>Start</span></button>
     <div class="tasks">
       ${TASKS.map(([k, l, ic]) => {
         const target = k === 'gym' ? gymRoute : k;

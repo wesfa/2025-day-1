@@ -9,9 +9,10 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.5.0';
 
 export const THEMES = {
+  meadow: 'Meadow',
   island: 'Island',
   classic: 'Classic Teal',
   slate: 'Slate',
@@ -21,7 +22,7 @@ export const THEMES = {
 };
 
 export function applyTheme() {
-  document.documentElement.dataset.theme = THEMES[S.settings.theme] ? S.settings.theme : 'island';
+  document.documentElement.dataset.theme = THEMES[S.settings.theme] ? S.settings.theme : 'meadow';
   const meta = document.querySelector('meta[name="theme-color"]');
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--desk').trim();
   if (meta && bg) meta.setAttribute('content', bg);

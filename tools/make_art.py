@@ -26,6 +26,14 @@ PAL = {
     'T': (140, 90, 43), 't': (186, 130, 68), 'D': (88, 54, 24),
 }
 
+# Meadow palette: deep sky, white clouds, rolling green hills
+MPAL = {
+    's1': (30, 86, 214), 's2': (44, 108, 226), 's3': (66, 134, 236), 's4': (102, 166, 244), 's5': (150, 200, 250),
+    'h0': (176, 228, 104), 'h1': (120, 198, 64), 'h2': (86, 172, 48), 'h3': (66, 146, 38), 'h4': (52, 122, 30), 'h5': (42, 102, 26),
+    'far': (122, 170, 96), 'far2': (104, 152, 84),
+    'fy': (255, 236, 92), 'fw': (250, 250, 240),
+}
+
 # ---------------------------------------------------------------- sprites
 PALM_ISLAND = [  # 24 x 22
     '.........kgGGgk.........',
@@ -71,6 +79,23 @@ CLOUD_SMALL = [  # 7 x 3
     '..WWW..',
     'WWWWWWW',
     '.cCCCc.',
+]
+CLOUD_HUGE = [  # 26 x 9 - a tall summer cumulus
+    '..........WWWW............',
+    '.......WWWWWWWWW..........',
+    '.....WWWWWWWWWWWW.WWWW....',
+    '....WWWWWWWWWWWWWWWWWWWW..',
+    '..WWWWWWWWWWWWWWWWWWWWWWW.',
+    '.WWWWWWWWWWWWWWWWWWWWWWWWW',
+    'WWWWWWWWWWWWWWWWWWWWWWWWWW',
+    'cWWWWWWWWWWWWWWWWWWWWWWWWc',
+    '.ccCCCCCCCCCCCCCCCCCCCCcc.',
+]
+CLOUD_WISP = [  # 30 x 4 - a thin high streak
+    '...................WWWWWW.....',
+    '...........WWWWWWWWWWWWWWWWW..',
+    '....cWWWWWWWWWWWcccc....cccWWc',
+    'cccc.......cccc...............',
 ]
 
 
@@ -148,10 +173,85 @@ def icon_scene(W, H, ox=0, oy=0):
     return img
 
 
+# ---------------------------------------------------------------- meadow (default scheme)
+def mset(px, x, y, key):
+    px[x, y] = MPAL[key]
+
+
+def mdither(px, x, y, a, b):
+    px[x, y] = MPAL[a] if (x + y) % 2 else MPAL[b]
+
+
+def paint_hills(img, ox, horizon, width, crest_x, crest_y, left_y, right_y, far=True, flowers=()):
+    """Rolling hill: smooth crest, highlight on top, greens deepening downhill, a distant hill behind."""
+    px = img.load()
+    W, H = img.size
+    def main_y(x):
+        if x <= crest_x:
+            t = (crest_x - x) / max(1, crest_x)
+            return crest_y + (left_y - crest_y) * t * t
+        t = (x - crest_x) / max(1, width - 1 - crest_x)
+        return crest_y + (right_y - crest_y) * t * t
+    def far_y(x):
+        c = width * 0.8
+        t = (x - c) / (width * 0.45)
+        return horizon - 1 - (horizon - crest_y) * 0.45 * max(0, 1 - t * t)
+    for X in range(W):
+        x = X - ox
+        if far:
+            fy = int(round(far_y(x)))
+            for Y in range(max(0, fy), H):
+                px[X, Y] = MPAL['far'] if Y - fy < 2 else MPAL['far2']
+        my = int(round(main_y(x)))
+        for Y in range(max(0, my), H):
+            d = Y - my
+            depth = (Y - crest_y) / max(1, H - crest_y)
+            if d == 0: mset(px, X, Y, 'h0')
+            elif d == 1: mdither(px, X, Y, 'h0', 'h1')
+            elif depth < 0.22: mset(px, X, Y, 'h1')
+            elif depth < 0.28: mdither(px, X, Y, 'h1', 'h2')
+            elif depth < 0.5: mset(px, X, Y, 'h2')
+            elif depth < 0.56: mdither(px, X, Y, 'h2', 'h3')
+            elif depth < 0.78: mset(px, X, Y, 'h3')
+            elif depth < 0.84: mdither(px, X, Y, 'h3', 'h4')
+            else: mset(px, X, Y, 'h4')
+            # grass texture: sparse darker tufts that follow the slope
+            if d > 2 and (X * 7 + Y * 13) % 29 == 0: mset(px, X, Y, 'h5' if depth > 0.5 else 'h3')
+    for (x, y, key) in flowers:
+        X = ox + x
+        if 0 <= X < W and 0 <= y < H: mset(px, X, y, key)
+
+
+def meadow_sky(img, top_rows, oy=0):
+    """Deep blue overhead, lighter toward the horizon, dithered between bands."""
+    px = img.load()
+    W, H = img.size
+    bands = ['s1', 's2', 's3', 's4', 's5']
+    for y in range(H):
+        f = (y - oy) / max(1, top_rows)
+        i = min(len(bands) - 1, max(0, int(f * len(bands))))
+        edge = (f * len(bands)) % 1
+        for x in range(W):
+            if i + 1 < len(bands) and edge > 0.82: mdither(px, x, y, bands[i], bands[i + 1])
+            else: mset(px, x, y, bands[i])
+
+
+def meadow_icon(W, H, ox=0, oy=0):
+    img = Image.new('RGB', (W, H))
+    meadow_sky(img, 20, oy)
+    blit(img, CLOUD_MID, ox + 1, oy + 3)
+    blit(img, CLOUD_SMALL, ox + 20, oy + 2)
+    blit(img, CLOUD_WISP[:2], ox + 9, oy + 10)
+    blit(img, CLOUD_SMALL, ox + 25, oy + 13)
+    flowers = [(5, oy + 27, 'fy'), (9, oy + 30, 'fw'), (14, oy + 28, 'fy'), (19, oy + 31, 'fy'), (24, oy + 29, 'fw'), (28, oy + 30, 'fy'), (3, oy + 31, 'fy')]
+    paint_hills(img, ox, oy + 20, 32, crest_x=11, crest_y=oy + 15, left_y=oy + 18, right_y=oy + 23, flowers=flowers)
+    return img
+
+
 def save_icons():
     out = os.path.join(ROOT, 'icons')
-    base = icon_scene(32, 32)
-    big = icon_scene(36, 36, 2, 2)   # extra 2px of scene on each side for the 180px size
+    base = meadow_icon(32, 32)
+    big = meadow_icon(36, 36, 2, 2)   # extra 2px of scene on each side for the 180px size
     base.resize((192, 192), Image.NEAREST).save(os.path.join(out, 'icon-192.png'))
     base.resize((512, 512), Image.NEAREST).save(os.path.join(out, 'icon-512.png'))
     base.resize((512, 512), Image.NEAREST).save(os.path.join(out, 'maskable-512.png'))  # full-bleed scene; island sits in the safe zone
@@ -228,6 +328,30 @@ def save_scene():
     p[5, 10] = PAL['W']
     sh.save(os.path.join(out, 'shore.png'))
 
+    # ---- meadow wallpaper pieces ----
+    sky = Image.new('RGB', (8, 64))
+    meadow_sky(sky, 64)
+    sky.save(os.path.join(out, 'm-sky.png'))
+    hill = Image.new('RGBA', (240, 40), (0, 0, 0, 0))
+    flowers = [((x * 37) % 240, 22 + (x * 11) % 18, 'fy' if x % 3 else 'fw') for x in range(26)]
+    paint_hills(hill, 0, 34, 240, crest_x=92, crest_y=4, left_y=16, right_y=30, flowers=flowers)
+    # clear everything above each column's hill top (paint_hills only paints downward, so just keep alpha)
+    hill.save(os.path.join(out, 'm-hill.png'))
+    import random
+    rnd = random.Random(7)  # fixed seed so the art is the same every run
+    field = Image.new('RGB', (64, 32), MPAL['h4'])
+    p = field.load()
+    for y in range(32):
+        for x in range(64):
+            r = rnd.random()
+            if r < 0.10: p[x, y] = MPAL['h3']
+            elif r < 0.16: p[x, y] = MPAL['h5']
+    for _ in range(9):
+        p[rnd.randrange(64), rnd.randrange(32)] = MPAL['fy' if rnd.random() < 0.65 else 'fw']
+    field.save(os.path.join(out, 'm-field.png'))
+    sprite(CLOUD_HUGE).save(os.path.join(out, 'm-cloud-huge.png'))
+    sprite(CLOUD_WISP).save(os.path.join(out, 'm-cloud-wisp.png'))
+
     sprite(CLOUD_BIG).save(os.path.join(out, 'cloud-1.png'))
     sprite(CLOUD_MID).save(os.path.join(out, 'cloud-2.png'))
     sprite(CLOUD_SMALL).save(os.path.join(out, 'cloud-3.png'))
@@ -235,7 +359,7 @@ def save_scene():
 
 
 if __name__ == '__main__':
-    for name, rows in [('PALM_ISLAND', PALM_ISLAND), ('CLOUD_BIG', CLOUD_BIG), ('CLOUD_MID', CLOUD_MID), ('CLOUD_SMALL', CLOUD_SMALL)]:
+    for name, rows in [('PALM_ISLAND', PALM_ISLAND), ('CLOUD_BIG', CLOUD_BIG), ('CLOUD_MID', CLOUD_MID), ('CLOUD_SMALL', CLOUD_SMALL), ('CLOUD_HUGE', CLOUD_HUGE), ('CLOUD_WISP', CLOUD_WISP)]:
         bad = [i for i, r in enumerate(rows) if len(r) != len(rows[0])]
         assert not bad, f'{name}: rows {bad} have the wrong width'
     save_icons()

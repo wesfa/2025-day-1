@@ -52,7 +52,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'island', themeV: 2, readAdded: true, sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'meadow', themeV: 3, readAdded: true, sound: true, lastBackup: 0, restAuto: true },
   };
 }
 
@@ -90,6 +90,11 @@ function migrate(s) {
   if (s.settings && !s.settings.themeV) {
     if (!s.settings.theme || s.settings.theme === 'classic') s.settings.theme = 'island';
     s.settings.themeV = 2;
+  }
+  // v1.5: Meadow became the default. Anyone still on the previous default (Island) moves over once.
+  if (s.settings && s.settings.themeV < 3) {
+    if (!s.settings.theme || s.settings.theme === 'island') s.settings.theme = 'meadow';
+    s.settings.themeV = 3;
   }
   // v1.3.1: add the nightly reading reminder once (if it's later deleted, it stays deleted)
   if (s.settings && Array.isArray(s.reminders) && !s.settings.readAdded) {
