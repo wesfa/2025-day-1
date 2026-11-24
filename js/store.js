@@ -17,6 +17,7 @@ export const DEFAULT_REMINDERS = () => [
   { id: 'fuel', kind: 'meal', label: 'Pre-practice fuel', msg: 'Eat carbs + protein before practice/lift and log it.', time: '15:15', days: [1, 2, 3, 4, 5], on: true, prefer: 'after' },
   { id: 'dinner', kind: 'meal', label: 'Log dinner', msg: 'Log dinner and check your protein.', time: '19:00', days: [...ALL_DAYS], on: true, prefer: 'after' },
   { id: 'night', kind: 'check', label: 'Night check-in', msg: 'How close are you to your macros? Finish protein before bed.', time: '21:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
+  { id: 'read', kind: 'read', label: 'Reading time', msg: 'Grab your book - 20-30 minutes of reading before bed. Phone down.', time: '21:45', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'gym', kind: 'gym', label: 'Gym time', msg: 'Time to train. Open today\'s workout.', time: '16:00', days: [1, 2, 4, 5], on: false, prefer: 'after' },
 ];
 
@@ -50,7 +51,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'island', themeV: 2, sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'island', themeV: 2, readAdded: true, sound: true, lastBackup: 0, restAuto: true },
   };
 }
 
@@ -74,7 +75,16 @@ function migrate(s) {
     if (!s.settings.theme || s.settings.theme === 'classic') s.settings.theme = 'island';
     s.settings.themeV = 2;
   }
-  // Fill in any keys added in newer versions without touching user data.
+  // v1.3.1: add the nightly reading reminder once (if it's later deleted, it stays deleted)
+  if (s.settings && Array.isArray(s.reminders) && !s.settings.readAdded) {
+    if (!s.reminders.some((r) => r.id === 'read')) {
+      const read = d.reminders.find((r) => r.id === 'read');
+      const night = s.reminders.findIndex((r) => r.id === 'night');
+      s.reminders.splice(night >= 0 ? night + 1 : s.reminders.length, 0, read);
+    }
+    s.settings.readAdded = true;
+  }
+  // Fill in any keys added in newer versions without touching user data
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
   for (const k of Object.keys(d.profile)) if (s.profile[k] === undefined) s.profile[k] = d.profile[k];
   for (const k of Object.keys(d.settings)) if (s.settings[k] === undefined) s.settings[k] = d.settings[k];
