@@ -9,6 +9,24 @@ const PAL = {
 };
 
 const ART = {
+  blocks: [
+    'kkkkkkk.kkkkkkk.',
+    'kwrrrrk.kwbbbbk.',
+    'krrrrrk.kbbbbbk.',
+    'krrrrrk.kbbbbbk.',
+    'krrrrrk.kbbbbbk.',
+    'krrrrrk.kbbbbbk.',
+    'kkkkkkk.kkkkkkk.',
+    '................',
+    'kkkkkkk.kkkkkkk.',
+    'kwPPPPk.kwyyyyk.',
+    'kPPPPPk.kyyyyyk.',
+    'kPPPPPk.kyyyyyk.',
+    'kPPPPPk.kyyyyyk.',
+    'kPPPPPk.kyyyyyk.',
+    'kkkkkkk.kkkkkkk.',
+    '................',
+  ],
   palm: [
     '................',
     '......qPPq......',

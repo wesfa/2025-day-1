@@ -16,6 +16,7 @@ It installs to your phone's home screen like a real app, works offline, and upda
 | **Gym** | 4-day DE/DT off-season program (power cleans, squats, bench, get-offs, hand fighting, neck work…), live workout logger (sets × reps × weight), "last time" numbers, progressive-overload suggestions, auto rest timer, PR detection, coaching cues, plate calculator, editable program |
 | **Weight** | Daily log, 7-day average, pixel chart, goal progress, weekly trend, projected goal date |
 | **Reminders** | Weekly school/work blocks plus dated exceptions (no school, early dismissal, out of town), reminders that move around them, a 7-day preview, schedule-file import, real push notifications via the free **ntfy** app, or a calendar file |
+| **Gridlock** | An original 8x8 block-puzzle game (Start menu or Today): drag three pieces at a time onto the grid, clear full rows and columns, chain clears for combos, and empty the board for a bonus. Saves your game and best score |
 | **Control Panel** | Profile, auto-calculated macro targets (or enter your own), 6 color schemes (default **Island**: pixel beach wallpaper with twinkling water), backup export/import |
 
 Macro targets: Mifflin-St Jeor BMR × training-phase activity factor, ±500 kcal per lb/week of goal change; ~1 g protein per lb, 25% fat, the rest carbs.

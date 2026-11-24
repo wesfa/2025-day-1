@@ -13,6 +13,7 @@ import { renderWizard, setWizardDone } from './wizard.js';
 import { syncPush } from './reminders.js';
 import './report.js';
 import { openAI } from './ai.js';
+import { renderGame, mountGame } from './game.js';
 
 const SCREENS = {
   today: { render: renderToday, title: 'Today' },
@@ -22,6 +23,7 @@ const SCREENS = {
   weight: { render: renderWeight, title: 'Weight', after: drawWeightChart },
   reminders: { render: renderReminders, title: 'Reminders' },
   settings: { render: renderSettings, title: 'Settings' },
+  play: { render: renderGame, title: 'Gridlock', after: mountGame },
 };
 
 const TASKS = [
@@ -97,6 +99,7 @@ function renderStart() {
       ${item('', 'Exercise Library', 'book', 'sm-lib')}
       ${item('', 'Plate Calculator', 'plate', 'sm-plates')}
       ${item('#/settings', 'Control Panel', 'gear')}
+      ${item('#/play', 'Gridlock (game)', 'blocks')}
       <div class="sm-sep"></div>
       ${deferredInstall ? item('', 'Install App', 'phone', 'sm-install') : isStandalone() ? '' : item('', 'Add to Home Screen', 'phone', 'sm-howto')}
       ${item('', 'About', 'sun', 'sm-about')}

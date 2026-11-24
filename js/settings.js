@@ -9,7 +9,7 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.3.3';
+export const APP_VERSION = '1.4.0';
 
 export const THEMES = {
   island: 'Island',

@@ -136,7 +136,7 @@ export function renderToday() {
 
   ${win('Training', train, { ico: 'dumbbell' })}
 
-  <div class="btn-row center bottom-links">${btn('Weekly report', 'weekly', { ico: 'trophy' })}${btn('Reminders', 'nav', { ico: 'bell', data: 'data-to="#/reminders"' })}</div>
+  <div class="btn-row center bottom-links">${btn('Weekly report', 'weekly', { ico: 'trophy' })}${btn('Reminders', 'nav', { ico: 'bell', data: 'data-to="#/reminders"' })}${btn('Gridlock', 'nav', { ico: 'blocks', data: 'data-to="#/play"' })}</div>
   `;
 }
 
