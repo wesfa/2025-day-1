@@ -1,7 +1,7 @@
-// Service worker: makes Trenches work offline and lets updates roll out.
+// Service worker: makes Macros work offline and lets updates roll out.
 // Bump VERSION on every deploy so phones pick up the new files.
-const VERSION = '1.2.0';
-const CACHE = 'trenches-' + VERSION;
+const VERSION = '1.3.0';
+const CACHE = 'macros-' + VERSION;
 
 const ASSETS = [
   './',
@@ -51,7 +51,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('trenches-') && k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => (k.startsWith('macros-') || k.startsWith('trenches-')) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

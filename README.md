@@ -1,7 +1,7 @@
-# TRENCHES 98
+# MACROS 98
 
-A personal nutrition and training app for a football **defensive lineman (DE / DT)**. It looks like a Windows 98 program
-sitting on a pixel-art tropical beach desktop.
+A personal food, training and weight app (with a DE / DT lifting program built in). It looks like a Windows 98 program
+sitting on a pixel-art tropical beach desktop. Formerly called Trenches.
 It installs to your phone's home screen like a real app, works offline, and updates itself when new code is pushed.
 
 **Live app:** https://wesfa.github.io/2025-day-1/ (after GitHub Pages is turned on, see below)
@@ -15,7 +15,7 @@ It installs to your phone's home screen like a real app, works offline, and upda
 | **Food** | Breakfast/Lunch/Dinner/Snacks diary, 140+ built-in foods (incl. fast food), online search (Open Food Facts), barcode scanner, Recent, Favorites, saved meals, copy yesterday's meal, quick add, custom foods |
 | **Gym** | 4-day DE/DT off-season program (power cleans, squats, bench, get-offs, hand fighting, neck work…), live workout logger (sets × reps × weight), "last time" numbers, progressive-overload suggestions, auto rest timer, PR detection, coaching cues, plate calculator, editable program |
 | **Weight** | Daily log, 7-day average, pixel chart, goal progress, weekly trend, projected goal date |
-| **Reminders** | Your school/work blocks, reminders that move around them, real push notifications via the free **ntfy** app, or a calendar file |
+| **Reminders** | Weekly school/work blocks plus dated exceptions (no school, early dismissal, out of town), reminders that move around them, a 7-day preview, schedule-file import, real push notifications via the free **ntfy** app, or a calendar file |
 | **Control Panel** | Profile, auto-calculated macro targets (or enter your own), 6 color schemes (default **Island**: pixel beach wallpaper with twinkling water), backup export/import |
 
 Macro targets: Mifflin-St Jeor BMR × training-phase activity factor, ±500 kcal per lb/week of goal change; ~1 g protein per lb, 25% fat, the rest carbs.
@@ -35,9 +35,16 @@ Macro targets: Mifflin-St Jeor BMR × training-phase activity factor, ±500 kcal
 
 iPhones don't let websites schedule alarms on their own, so the app gives you two options:
 
-- **Phone alerts (recommended):** install the free **ntfy** app, then go to **Reminders → Set up phone alerts**. Each time you open Trenches, it queues the next ~2 days of reminders on ntfy.sh.
+- **Phone alerts (recommended):** install the free **ntfy** app, then go to **Reminders → Set up phone alerts**. Each time you open Macros, it queues the next ~2 days of reminders on ntfy.sh.
   Only the reminder text ("Log lunch") is sent. Food and weight data never leave the phone.
 - **Calendar file:** **Reminders → Download calendar file** adds repeating events with alerts to your calendar.
+
+## Schedule files
+
+**Reminders → Import schedule file** loads a JSON file (or pasted text) shaped like
+`{"type": "macros-schedule", "busy": [{"label", "kind": "school"|"work"|"other", "days": [1..5], "start", "end"}], "dates": [{"label", "kind": "off"|"early"|"away", "from", "to", "end"}]}`.
+School blocks in the file replace your school blocks, and dates are added or updated by `id`. Personal schedules are kept out of this public repo,
+so they're shared as files instead of committed.
 
 ## AI Food Scanner
 

@@ -40,7 +40,7 @@ function verdict(w) {
   if (dir < 0 && w.avgCal > w.tg.cal * 1.1 && w.loggedDays) tips.push('Running over on calories. Swap soda/sweet tea for water and keep protein high.');
   if (w.lifts < 3) tips.push('Aim for 3-4 lifts a week. Linemen are built in the weight room.');
   if (w.weighIns < 5) tips.push('Weigh in daily - the 7-day average is what matters, and it needs data.');
-  if (!tips.length) tips.push('Great week. Keep stacking these - consistency wins in the trenches.');
+  if (!tips.length) tips.push('Great week. Keep stacking these - consistency wins.');
   return tips;
 }
 

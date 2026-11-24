@@ -59,7 +59,7 @@ function render() {
   window.scrollTo(0, sameRoute ? y : 0);
   lastRoute = r;
   lastHash = location.hash;
-  document.title = `${SCREENS[r].title} - Trenches`;
+  document.title = `${SCREENS[r].title} - Macros`;
   drawModals();
 }
 setRerender(render);
@@ -83,7 +83,7 @@ function renderTaskbar(r) {
 function renderStart() {
   const item = (to, label, ic, act = 'nav') => `<button class="sm-item" data-act="${act}" ${to ? `data-to="${to}"` : ''}>${icon(ic, 24)}<span>${label}</span></button>`;
   $start.innerHTML = `
-    <div class="sm-side"><span>TRENCHES<b>98</b></span></div>
+    <div class="sm-side"><span>MACROS<b>98</b></span></div>
     <div class="sm-items">
       ${item('#/today', 'Today', 'calendar')}
       ${item('#/food', 'Food Diary', 'burger')}
@@ -129,7 +129,7 @@ on({
   },
   'sm-about': () => {
     toggleStart(false);
-    msgBox({ title: 'About Trenches', ico: 'sun', text: `<p><b>TRENCHES 98</b> v${APP_VERSION}</p><p>Nutrition + training for defensive linemen. Win the trenches.</p><p class="muted small">Food data: built-in list + Open Food Facts. Your data stays on this phone.</p>` });
+    msgBox({ title: 'About Macros', ico: 'sun', text: `<p><b>MACROS 98</b> v${APP_VERSION}</p><p>Food, training and weight - all in one place.</p><p class="muted small">Food data: built-in list + Open Food Facts. Your data stays on this phone.</p>` });
   },
   'check-update': async () => {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
@@ -222,7 +222,7 @@ let reloadOnControllerChange = false;
 function promptUpdate(reg) {
   msgBox({
     title: 'Update available', ico: 'floppy',
-    text: '<p>A new version of Trenches is ready.</p><p class="muted small">Your data is safe - it stays on your phone.</p>',
+    text: '<p>A new version of Macros is ready.</p><p class="muted small">Your data is safe - it stays on your phone.</p>',
     buttons: [['Restart now', true], ['Later', false]],
   }).then((yes) => {
     if (yes && reg.waiting) { reloadOnControllerChange = true; reg.waiting.postMessage('skip-waiting'); }

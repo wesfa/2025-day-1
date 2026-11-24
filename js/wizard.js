@@ -20,8 +20,8 @@ function page() {
   const work = S.schedule.busy.find((b) => b.id === 'work');
   switch (step) {
     case 0: return `
-      <h2>Welcome to TRENCHES Setup</h2>
-      <p>This wizard sets up your personal D-line nutrition + training app.</p>
+      <h2>Welcome to MACROS Setup</h2>
+      <p>This wizard sets up your personal nutrition + training app.</p>
       <ul class="feat">
         <li>${icon('burger', 16)} Log food fast and hit your macros</li>
         <li>${icon('dumbbell', 16)} DE / DT lifting program with sets, reps and weight</li>
@@ -80,7 +80,7 @@ function page() {
         <div class="stat sunken"><span>Fat</span><b class="vt">${t.f}g</b></div>
       </div>
       <p class="muted small">${t.dir > 0 ? 'Gaining' : t.dir < 0 ? 'Cutting' : 'Holding'}: maintenance ~${t.maintenance} kcal ${t.delta >= 0 ? '+' : '-'} ${Math.abs(t.delta)}. These adjust automatically as your weight changes. Change anything later in Control Panel.</p>
-      <p>Next: add Trenches to your home screen and turn on reminders.</p>`;
+      <p>Next: add Macros to your home screen and turn on reminders.</p>`;
     }
   }
 }
@@ -89,9 +89,9 @@ export function renderWizard() {
   return `
   <div class="wizard-wrap">
     <section class="win wizard">
-      <header class="titlebar"><span class="tb-ico">${icon('palm', 16)}</span><span class="tb-title">TRENCHES Setup</span></header>
+      <header class="titlebar"><span class="tb-ico">${icon('palm', 16)}</span><span class="tb-title">MACROS Setup</span></header>
       <div class="wiz-body">
-        <div class="wiz-side" aria-hidden="true"><div class="wiz-brand">TRENCHES<small>98</small></div></div>
+        <div class="wiz-side" aria-hidden="true"><div class="wiz-brand">MACROS<small>98</small></div></div>
         <div class="wiz-main">${page()}</div>
       </div>
       <div class="wiz-foot">
@@ -121,8 +121,8 @@ function collect() {
     Object.assign(p, { startWeight: sw, goalWeight: gw, rate: num(v.rate, 0.5), phase: v.phase, startDate: dayKey() });
   } else if (step === 3) {
     const busy = S.schedule.busy.filter((b) => b.id !== 'school' && b.id !== 'work');
-    if (v.hasSchool && v.schoolDays.length) busy.unshift({ id: 'school', label: 'School', days: v.schoolDays.map(Number), start: v.schoolStart, end: v.schoolEnd });
-    if (v.hasWork && v.workDays.length) busy.push({ id: 'work', label: 'Work', days: v.workDays.map(Number), start: v.workStart, end: v.workEnd });
+    if (v.hasSchool && v.schoolDays.length) busy.unshift({ id: 'school', label: 'School', kind: 'school', days: v.schoolDays.map(Number), start: v.schoolStart, end: v.schoolEnd });
+    if (v.hasWork && v.workDays.length) busy.push({ id: 'work', label: 'Work', kind: 'work', days: v.workDays.map(Number), start: v.workStart, end: v.workEnd });
     S.schedule.busy = busy;
     S.schedule.wake = v.wake || '06:00';
     S.schedule.sleep = v.sleep || '22:30';

@@ -4,6 +4,7 @@ import { DEFAULT_TEMPLATES, EX_BY_ID } from './program.js';
 import { FOOD_BY_ID } from './foods.js';
 import { calcTargets } from './calc.js';
 
+// The app was renamed from Trenches to Macros; the storage key stays so existing data carries over.
 const KEY = 'trenches:v1';
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -11,7 +12,7 @@ export const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 
 export const DEFAULT_REMINDERS = () => [
   { id: 'weigh', kind: 'weigh', label: 'Weigh-in', msg: 'Step on the scale (after the bathroom, before eating) and log it.', time: '06:30', days: [...ALL_DAYS], on: true, prefer: 'before' },
-  { id: 'bfast', kind: 'meal', label: 'Log breakfast', msg: 'Big breakfast = big day. Log it in Trenches.', time: '07:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
+  { id: 'bfast', kind: 'meal', label: 'Log breakfast', msg: 'Big breakfast = big day. Log it in Macros.', time: '07:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'lunch', kind: 'meal', label: 'Log lunch', msg: 'Log what you ate for lunch.', time: '12:30', days: [...ALL_DAYS], on: true, prefer: 'after' },
   { id: 'fuel', kind: 'meal', label: 'Pre-practice fuel', msg: 'Eat carbs + protein before practice/lift and log it.', time: '15:15', days: [1, 2, 3, 4, 5], on: true, prefer: 'after' },
   { id: 'dinner', kind: 'meal', label: 'Log dinner', msg: 'Log dinner and check your protein.', time: '19:00', days: [...ALL_DAYS], on: true, prefer: 'after' },
@@ -43,8 +44,9 @@ function defaults() {
     schedule: {
       wake: '06:00', sleep: '22:30',
       busy: [
-        { id: 'school', label: 'School', days: [1, 2, 3, 4, 5], start: '07:45', end: '15:00' },
+        { id: 'school', label: 'School', kind: 'school', days: [1, 2, 3, 4, 5], start: '07:45', end: '15:00' },
       ],
+      dates: [], // dated exceptions: { id, label, kind: 'off' | 'early' | 'away', from, to, end? }
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
@@ -77,6 +79,10 @@ function migrate(s) {
   for (const k of Object.keys(d.profile)) if (s.profile[k] === undefined) s.profile[k] = d.profile[k];
   for (const k of Object.keys(d.settings)) if (s.settings[k] === undefined) s.settings[k] = d.settings[k];
   for (const k of Object.keys(d.notify)) if (s.notify[k] === undefined) s.notify[k] = d.notify[k];
+  if (!s.schedule) s.schedule = d.schedule;
+  if (!Array.isArray(s.schedule.dates)) s.schedule.dates = [];
+  // v1.3: renamed to Macros - update the app name inside saved reminder text
+  for (const r of s.reminders || []) if (typeof r.msg === 'string') r.msg = r.msg.replace(/\bTrenches\b/g, 'Macros');
   return s;
 }
 

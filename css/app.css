@@ -1,4 +1,4 @@
-/* TRENCHES - Win9x-style pixel UI. Chunky 2px bevels read well on phone screens. */
+/* MACROS - Win9x-style pixel UI. Chunky 2px bevels read well on phone screens. */
 
 @font-face {
   font-family: 'DotGothic16';
@@ -561,6 +561,12 @@ label.btn { cursor: pointer; }
 .wg-busy { background: repeating-linear-gradient(45deg, var(--face) 0 4px, var(--light) 4px 8px); padding: 3px; margin: 2px 0; color: var(--muted); }
 .wg-item { padding: 3px 2px; border-bottom: 1px dotted var(--lo); }
 .wg-item.moved, .moved-key { background: var(--tip); }
+.wg-rule { font-weight: 700; padding: 3px; margin: 2px 0; }
+.tag.kind-off, .wg-rule.kind-off { background: var(--good); color: #fff; }
+.tag.kind-early, .wg-rule.kind-early { background: var(--mf); color: #fff; }
+.tag.kind-away, .wg-rule.kind-away { background: var(--accent); color: var(--accent-text); }
+.row .tag { flex: none; font-size: 12px; }
+.day-rule { display: flex; align-items: center; gap: 8px; margin: -2px 0 8px; font-size: 15px; }
 .steps { padding-left: 22px; margin: 6px 0; }
 .steps li { margin: 8px 0; }
 code.sel { user-select: all; -webkit-user-select: all; background: var(--field); padding: 2px 6px; word-break: break-all; display: inline-block; box-shadow: inset 1px 1px 0 var(--lo), inset -1px -1px 0 var(--hi); }

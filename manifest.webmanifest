@@ -1,7 +1,7 @@
 {
-  "name": "Trenches - D-Line Fuel & Lift",
-  "short_name": "Trenches",
-  "description": "Food log, macros, lifting and weigh-ins for defensive linemen.",
+  "name": "Macros",
+  "short_name": "Macros",
+  "description": "Food log, macros, lifting and weigh-ins.",
   "id": "./",
   "start_url": "./#/today",
   "scope": "./",

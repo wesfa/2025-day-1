@@ -121,7 +121,7 @@ export function drawModals() {
 on({ 'modal-close': () => closeModal() });
 
 // Win95 message box. Returns a promise of the clicked button value.
-export function msgBox({ title = 'Trenches', text = '', ico = 'warn', buttons = [['OK', true]] }) {
+export function msgBox({ title = 'Macros', text = '', ico = 'warn', buttons = [['OK', true]] }) {
   return new Promise((resolve) => {
     const id = 'mb' + Math.random().toString(36).slice(2, 7);
     on({
@@ -137,7 +137,7 @@ export function msgBox({ title = 'Trenches', text = '', ico = 'warn', buttons = 
 export const confirmBox = (text, title = 'Confirm', yes = 'Yes', ico = 'warn') =>
   msgBox({ title, text, ico, buttons: [[yes, true], ['Cancel', false]] });
 
-export function promptBox({ title = 'Trenches', label = '', value = '', type = 'text', placeholder = '' }) {
+export function promptBox({ title = 'Macros', label = '', value = '', type = 'text', placeholder = '' }) {
   return new Promise((resolve) => {
     const id = 'pb' + Math.random().toString(36).slice(2, 7);
     on({

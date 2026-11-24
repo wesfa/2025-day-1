@@ -1,12 +1,12 @@
 // Today dashboard.
 import { S, save, day, peekDay, totals, targets, activeWorkout, nextTemplate, workoutOn, streak, getEx, getFood, MEALS } from './store.js';
 import { FOOD_BY_ID } from './foods.js';
-import { dayKey, esc, r0, r1, fmt, longDate, buzz, isStandalone } from './util.js';
+import { dayKey, esc, r0, r1, fmt, longDate, buzz, isStandalone, fmtTime } from './util.js';
 import { win, group, bar, btn, on, rerender, toast } from './ui.js';
 import { icon } from './icons.js';
 import { openAddFood, openFoodDetail, mealForNow } from './food.js';
 import { logWeight, weightStats } from './weight.js';
-import { dueNow } from './reminders.js';
+import { dueNow, dateRule, DATE_KINDS } from './reminders.js';
 import './ai.js';
 
 // High-protein / calorie-dense staples the coach can suggest
@@ -57,6 +57,7 @@ export function renderToday() {
   const doneToday = workoutOn(k);
   const next = nextTemplate();
   const due = dueNow().filter((r) => r.kind !== 'weigh');
+  const rule = dateRule(k);
   const name = S.profile.name ? `, ${esc(S.profile.name)}` : '';
   const hour = new Date().getHours();
   const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -88,7 +89,7 @@ export function renderToday() {
   const showInstall = !isStandalone() && !(S.settings.hideInstallUntil > Date.now());
   const backupDue = Date.now() - (S.settings.lastBackup || S.created || Date.now()) > 14 * DAY && !(S.settings.hideBackupUntil > Date.now());
   const nudges = `
-    ${showInstall ? `<div class="alert soft nudge">${icon('phone', 16)}<span>Put Trenches on your home screen for full-screen + offline.</span>${btn('How', 'install-help')}<button class="btn sq" data-act="hide-install" aria-label="Dismiss">${icon('close', 8)}</button></div>` : ''}
+    ${showInstall ? `<div class="alert soft nudge">${icon('phone', 16)}<span>Put Macros on your home screen for full-screen + offline.</span>${btn('How', 'install-help')}<button class="btn sq" data-act="hide-install" aria-label="Dismiss">${icon('close', 8)}</button></div>` : ''}
     ${backupDue ? `<div class="alert soft nudge">${icon('floppy', 16)}<span>Back up your data (it only lives on this phone).</span>${btn('Backup', 'backup-export')}<button class="btn sq" data-act="hide-backup" aria-label="Later">${icon('close', 8)}</button></div>` : ''}`;
 
   return `
@@ -98,6 +99,7 @@ export function renderToday() {
       <span>${esc(longDate(new Date()))}</span>
       ${st ? `<span class="streak">${icon('flame', 16)} ${st}-day streak</span>` : '<span class="muted small">Log food to start a streak</span>'}
     </div>
+    ${rule ? `<div class="day-rule"><span class="tag kind-${rule.kind}">${DATE_KINDS[rule.kind]}</span> ${esc(rule.label)}${rule.kind === 'early' && rule.end ? ` - out at ${fmtTime(rule.end)}` : ''}</div>` : ''}
     ${weigh}
     ${due.length ? `<div class="alert soft">${icon('bell', 16)} <span>${due.map((r) => esc(r.label)).join(' · ')}</span></div>` : ''}
     <div class="cal-box panel sunken">
