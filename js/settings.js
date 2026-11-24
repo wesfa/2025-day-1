@@ -8,9 +8,10 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export const THEMES = {
+  island: 'Island',
   classic: 'Classic Teal',
   slate: 'Slate',
   storm: 'Rainy Day',
@@ -19,7 +20,7 @@ export const THEMES = {
 };
 
 export function applyTheme() {
-  document.documentElement.dataset.theme = S.settings.theme || 'classic';
+  document.documentElement.dataset.theme = THEMES[S.settings.theme] ? S.settings.theme : 'island';
   const meta = document.querySelector('meta[name="theme-color"]');
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--desk').trim();
   if (meta && bg) meta.setAttribute('content', bg);

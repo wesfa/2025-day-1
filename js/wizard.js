@@ -89,9 +89,9 @@ export function renderWizard() {
   return `
   <div class="wizard-wrap">
     <section class="win wizard">
-      <header class="titlebar"><span class="tb-ico">${icon('football', 16)}</span><span class="tb-title">TRENCHES Setup</span></header>
+      <header class="titlebar"><span class="tb-ico">${icon('palm', 16)}</span><span class="tb-title">TRENCHES Setup</span></header>
       <div class="wiz-body">
-        <div class="wiz-side"><div class="wiz-art">${icon('football', 64)}${icon('dumbbell', 48)}</div><div class="wiz-brand">TRENCHES<small>98</small></div></div>
+        <div class="wiz-side" aria-hidden="true"><div class="wiz-brand">TRENCHES<small>98</small></div></div>
         <div class="wiz-main">${page()}</div>
       </div>
       <div class="wiz-foot">

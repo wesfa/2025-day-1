@@ -48,7 +48,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'classic', sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'island', themeV: 2, sound: true, lastBackup: 0, restAuto: true },
   };
 }
 
@@ -66,6 +66,12 @@ function load() {
 
 function migrate(s) {
   const d = defaults();
+  // v1.2: Island became the default scheme. Move anyone still on the old default over once;
+  // a scheme picked on purpose (anything else) is left alone.
+  if (s.settings && !s.settings.themeV) {
+    if (!s.settings.theme || s.settings.theme === 'classic') s.settings.theme = 'island';
+    s.settings.themeV = 2;
+  }
   // Fill in any keys added in newer versions without touching user data.
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
   for (const k of Object.keys(d.profile)) if (s.profile[k] === undefined) s.profile[k] = d.profile[k];

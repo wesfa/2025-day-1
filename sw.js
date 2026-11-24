@@ -1,6 +1,6 @@
 // Service worker: makes Trenches work offline and lets updates roll out.
 // Bump VERSION on every deploy so phones pick up the new files.
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const CACHE = 'trenches-' + VERSION;
 
 const ASSETS = [
@@ -25,6 +25,16 @@ const ASSETS = [
   './js/util.js',
   './js/weight.js',
   './js/wizard.js',
+  './art/sky.png',
+  './art/horizon.png',
+  './art/waves.png',
+  './art/spark-a.png',
+  './art/spark-b.png',
+  './art/shore.png',
+  './art/cloud-1.png',
+  './art/cloud-2.png',
+  './art/cloud-3.png',
+  './art/island.png',
   './fonts/dotgothic16.woff2',
   './fonts/vt323.woff2',
   './icons/apple-touch-icon.png',

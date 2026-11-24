@@ -68,7 +68,7 @@ function renderTaskbar(r) {
   const act = activeWorkout();
   const gymRoute = act ? 'workout' : 'gym';
   $task.innerHTML = `
-    <button class="btn start-btn ${$start.classList.contains('open') ? 'on' : ''}" data-act="start">${icon('football', 20)}<span>Start</span></button>
+    <button class="btn start-btn ${$start.classList.contains('open') ? 'on' : ''}" data-act="start">${icon('palm', 20)}<span>Start</span></button>
     <div class="tasks">
       ${TASKS.map(([k, l, ic]) => {
         const target = k === 'gym' ? gymRoute : k;
@@ -98,7 +98,7 @@ function renderStart() {
       ${item('#/settings', 'Control Panel', 'gear')}
       <div class="sm-sep"></div>
       ${deferredInstall ? item('', 'Install App', 'phone', 'sm-install') : isStandalone() ? '' : item('', 'Add to Home Screen', 'phone', 'sm-howto')}
-      ${item('', 'About', 'football', 'sm-about')}
+      ${item('', 'About', 'sun', 'sm-about')}
     </div>`;
 }
 function toggleStart(open) {
@@ -129,7 +129,7 @@ on({
   },
   'sm-about': () => {
     toggleStart(false);
-    msgBox({ title: 'About Trenches', ico: 'football', text: `<p><b>TRENCHES 98</b> v${APP_VERSION}</p><p>Nutrition + training for defensive linemen. Win the trenches.</p><p class="muted small">Food data: built-in list + Open Food Facts. Your data stays on this phone.</p>` });
+    msgBox({ title: 'About Trenches', ico: 'sun', text: `<p><b>TRENCHES 98</b> v${APP_VERSION}</p><p>Nutrition + training for defensive linemen. Win the trenches.</p><p class="muted small">Food data: built-in list + Open Food Facts. Your data stays on this phone.</p>` });
   },
   'check-update': async () => {
     const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
@@ -216,12 +216,17 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ---------- Service worker (offline + updates) ----------
+// Reload only after the user accepts an update. (On the very first visit the new worker
+// also takes control, and reloading then would throw people out of the setup wizard.)
+let reloadOnControllerChange = false;
 function promptUpdate(reg) {
   msgBox({
     title: 'Update available', ico: 'floppy',
     text: '<p>A new version of Trenches is ready.</p><p class="muted small">Your data is safe - it stays on your phone.</p>',
     buttons: [['Restart now', true], ['Later', false]],
-  }).then((yes) => { if (yes && reg.waiting) reg.waiting.postMessage('skip-waiting'); });
+  }).then((yes) => {
+    if (yes && reg.waiting) { reloadOnControllerChange = true; reg.waiting.postMessage('skip-waiting'); }
+  });
 }
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => {
@@ -236,10 +241,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       });
       document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
     }).catch((e) => console.warn('SW failed', e));
-    let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading) return;
-      reloading = true;
+      if (!reloadOnControllerChange) return;
+      reloadOnControllerChange = false;
       location.reload();
     });
   });
@@ -250,7 +254,7 @@ setWizardDone((finished) => {
   if (finished) {
     go('#/today');
     if (!isStandalone()) setTimeout(openInstallHelp, 400);
-    else toast(`Let's go${S.profile.name ? ', ' + esc(S.profile.name) : ''}!`, 'football');
+    else toast(`Let's go${S.profile.name ? ', ' + esc(S.profile.name) : ''}!`, 'palm');
     return;
   }
   render();

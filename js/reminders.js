@@ -3,7 +3,7 @@ import { S, save, peekDay } from './store.js';
 import { toMin, fromMin, fmtTime, dayKey, pad2, uid, isAndroid } from './util.js';
 
 const BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-const KIND_TAG = { weigh: 'alarm_clock', meal: 'fork_and_knife', check: 'football', gym: 'muscle', custom: 'bell' };
+const KIND_TAG = { weigh: 'alarm_clock', meal: 'fork_and_knife', check: 'palm_tree', gym: 'muscle', custom: 'bell' };
 
 // Merge busy blocks for a weekday into sorted [start, end] minute ranges
 export function busyFor(dow) {
@@ -131,7 +131,7 @@ export function buildICS() {
         `DTSTART:${icsDate(start, time)}`,
         'DURATION:PT5M',
         `RRULE:FREQ=WEEKLY;BYDAY=${dows.map((d) => BYDAY[d]).join(',')}`,
-        `SUMMARY:${icsEsc('🏈 ' + r.label)}`,
+        `SUMMARY:${icsEsc('🌴 ' + r.label)}`,
         `DESCRIPTION:${icsEsc(r.msg + '\nOpen Trenches from your home screen.')}`,
         'TRANSP:TRANSPARENT',
         'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEsc(r.label)}`, 'TRIGGER:PT0M', 'END:VALARM',
@@ -169,7 +169,7 @@ async function postNtfy(title, message, extra = {}) {
 
 export async function sendTest() {
   if (!S.notify.topic) throw new Error('No topic');
-  await postNtfy('Trenches test', 'Notifications are working. Go eat.', { tags: 'football' });
+  await postNtfy('Trenches test', 'Notifications are working. Go eat.', { tags: 'palm_tree' });
 }
 
 export async function syncPush({ force = false } = {}) {
@@ -196,7 +196,7 @@ export async function syncPush({ force = false } = {}) {
       const title = it.labels.join(' + ');
       const msg = it.msgs.join('\n');
       try {
-        await postNtfy(title, msg, { at: String(Math.floor(ts / 1000)), tags: KIND_TAG[it.kinds[0]] || 'football' });
+        await postNtfy(title, msg, { at: String(Math.floor(ts / 1000)), tags: KIND_TAG[it.kinds[0]] || 'palm_tree' });
         N.sent[key] = 1; queued++;
         latest = Math.max(latest, ts);
       } catch (e) {

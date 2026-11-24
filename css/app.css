@@ -59,6 +59,14 @@
   --good: #30d030; --bad: #ff5050; --grid: #262626; --tip: #2a2a10;
   --mp: #00a0d0; --mc: #30c0a0; --mf: #d0c030; --water: #3aa0ff; --done: #10301a;
 }
+/* Island: pixel beach behind classic gray windows. Sky-blue titles, ocean-blue bars, sand accents. */
+[data-theme="island"] {
+  --desk: #1870ec;
+  --title1: #0a48b0; --title2: #38aef0;
+  --accent: #0b5fc0; --mp: #0b5fc0; --mc: #0f8f9c; --mf: #c08a26; --water: #1d9be6;
+  --tip: #fff3cf; --grid: #d6e6f2;
+}
+[data-theme="island"] .tb-title { text-shadow: 1px 1px 0 rgba(0, 30, 90, 0.55); }
 
 /* ---------- Bevels ---------- */
 .raised, .win, .btn, .taskbar, .startmenu, .restbar, .tab.on {
@@ -85,6 +93,36 @@ body {
   overscroll-behavior-y: none;
 }
 body.in-wizard { padding-bottom: 12px; }
+html[data-theme="island"] { background: #1870ec; }
+/* the page itself must be see-through so the fixed scene (z-index -1) shows behind the windows */
+[data-theme="island"] body { background: transparent; }
+/* leave room at the end of each screen so the island shows above the taskbar */
+[data-theme="island"] body:not(.in-wizard) { padding-bottom: calc(var(--tb-h) + env(safe-area-inset-bottom) + 104px); }
+
+/* ---------- Island scene (fixed pixel-art wallpaper; art is 1px = 4 CSS px) ---------- */
+#scene { display: none; position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: #083f86; }
+[data-theme="island"] #scene { display: block; }
+#scene > div, #scene i { position: absolute; display: block; image-rendering: crisp-edges; image-rendering: pixelated; }
+#scene .sky { top: 0; left: 0; right: 0; height: 46%; background: #1870ec url('../art/sky.png') left bottom / 32px 160px repeat-x; }
+#scene .sea {
+  top: 46%; left: 0; right: 0; bottom: 0;
+  background:
+    url('../art/horizon.png') left top / 32px 12px repeat-x,
+    url('../art/waves.png') left 12px / 128px 96px repeat,
+    linear-gradient(#1689d8 0 64px, #0d6cc2 64px 160px, #0a54a6 160px 300px, #083f86 300px);
+}
+#scene .spark { inset: 16px 0 0; background: url('../art/spark-a.png') left top / 192px 128px repeat; animation: twinkle 1.6s infinite; will-change: opacity; }
+#scene .spark.b { background-image: url('../art/spark-b.png'); animation-delay: -0.8s; }
+@keyframes twinkle { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }
+#scene .cloud { background: center / 100% 100% no-repeat; }
+#scene .c1 { width: 64px; height: 24px; left: 5%; top: calc(env(safe-area-inset-top) + 26px); background-image: url('../art/cloud-1.png'); }
+#scene .c2 { width: 44px; height: 20px; right: 7%; top: 21%; background-image: url('../art/cloud-2.png'); }
+#scene .c3 { width: 28px; height: 12px; left: 34%; top: 36%; background-image: url('../art/cloud-3.png'); }
+#scene .island {
+  width: 96px; height: 88px; left: calc(50% - 44px);
+  bottom: calc(var(--tb-h) + env(safe-area-inset-bottom) + 6px);
+  background: url('../art/island.png') center / 100% 100% no-repeat;
+}
 body.has-modal { overflow: hidden; }
 #app { max-width: 540px; margin: 0 auto; padding: 8px 8px 0; }
 .boot { color: #fff; padding: 40px 0; text-align: center; font-size: 20px; }
@@ -531,12 +569,19 @@ code.sel { user-select: all; -webkit-user-select: all; background: var(--field);
 .wizard-wrap { min-height: calc(100vh - 20px); display: flex; align-items: center; justify-content: center; padding: 8px 0; }
 .wizard { width: 100%; max-width: 560px; margin: 0; }
 .wiz-body { display: flex; min-height: 360px; }
+/* beach scene panel (art at 3x): island on the shore strip, a cloud, sky bands */
 .wiz-side {
-  width: 120px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 14px 6px;
-  background: linear-gradient(180deg, var(--title1), var(--desk));
+  width: 120px; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 14px 6px;
+  image-rendering: crisp-edges; image-rendering: pixelated;
+  background:
+    url('../art/island.png') center bottom 8px / 72px 66px no-repeat,
+    url('../art/shore.png') left bottom / 96px 36px repeat-x,
+    url('../art/cloud-2.png') 12px 96px / 33px 15px no-repeat,
+    url('../art/cloud-3.png') right 14px top 150px / 21px 9px no-repeat,
+    url('../art/sky.png') left bottom 36px / 24px 120px repeat-x,
+    #1870ec;
 }
-.wiz-art { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.wiz-brand { color: #fff; font-weight: 700; font-size: 20px; text-align: center; line-height: 1; }
+.wiz-brand { color: #fff; font-weight: 700; font-size: 20px; text-align: center; line-height: 1; text-shadow: 2px 2px 0 rgba(0, 30, 90, 0.6); }
 .wiz-brand small { display: block; font-size: 30px; font-family: 'VT323', monospace; font-weight: 400; color: var(--light); }
 .wiz-main { flex: 1; min-width: 0; padding: 14px 12px; }
 .wiz-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 8px 6px; border-top: 2px solid var(--lo); box-shadow: inset 0 2px 0 var(--hi); flex-wrap: wrap; }
@@ -545,10 +590,10 @@ code.sel { user-select: all; -webkit-user-select: all; background: var(--field);
 .feat li { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
 @media (max-width: 480px) {
   .wiz-body { flex-direction: column; min-height: 0; }
-  .wiz-side { width: auto; flex-direction: row; padding: 8px 12px; }
-  .wiz-art { flex-direction: row; }
-  .wiz-art .px-ico:first-child { width: 40px; height: 40px; }
-  .wiz-art .px-ico:last-child { width: 32px; height: 32px; }
+  .wiz-side {
+    width: auto; flex-direction: row; align-items: flex-start; min-height: 96px; padding: 12px;
+    background-position: right 18px bottom 6px, left bottom, 46% 14px, right 110px top 44px, left bottom 36px, 0 0;
+  }
   .wiz-brand small { display: inline; font-size: 22px; margin-left: 4px; }
 }
 
@@ -558,4 +603,7 @@ code.sel { user-select: all; -webkit-user-select: all; background: var(--field);
 }
 @media (prefers-reduced-motion: reduce) {
   .progress .fill, .toast { transition: none; }
+  #scene .spark { animation: none; }
+  #scene .spark.b { display: none; }
+  .progress.marquee .fill { animation: none; transform: none; }
 }
