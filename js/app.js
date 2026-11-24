@@ -1,5 +1,6 @@
 // App shell: router, taskbar, Start menu, service worker, timers.
-import { S, save, activeWorkout } from './store.js';
+import { S, save, activeWorkout, rawAtLoad, replaceState, enableMirror } from './store.js';
+import { readMirror, snapshot } from './vault.js';
 import { actions, on, setRerender, setNavigate, go, drawModals, closeAllModals, modalOpen, msgBox, toast, unlockAudio } from './ui.js';
 import { icon } from './icons.js';
 import { dayKey, clockNow, esc, isStandalone } from './util.js';
@@ -261,7 +262,41 @@ setWizardDone((finished) => {
   window.scrollTo(0, 0);
 });
 
+// ---------- Data safety (runs once at startup) ----------
+// 1. If the IndexedDB mirror holds newer data than localStorage (or localStorage came back empty
+//    or unreadable), restore from the mirror.
+// 2. Take a restore point before each app update and once a day.
+// 3. Switch the mirror on so every save is written to both places.
+async function protectData() {
+  let recovered = false;
+  try {
+    const m = await readMirror();
+    if (m) {
+      const copy = JSON.parse(m);
+      const newer = (copy.savedAt || 0) > (S.savedAt || 0);
+      if (copy.setupDone && (!rawAtLoad || newer)) { replaceState(copy); recovered = true; }
+    }
+  } catch (e) {
+    console.warn('mirror check failed', e);
+  }
+  enableMirror();
+  const before = rawAtLoad;
+  if (before && S.settings.lastVersion !== APP_VERSION) {
+    await snapshot(`Before update to v${APP_VERSION}`, before);
+    S.settings.lastSnapDay = dayKey();
+  } else if (before && S.settings.lastSnapDay !== dayKey()) {
+    await snapshot('Start of day', before);
+    S.settings.lastSnapDay = dayKey();
+  }
+  S.settings.lastVersion = APP_VERSION;
+  save(true);
+  if (recovered) {
+    render();
+    toast('Recovered your data from the backup copy', 'floppy');
+  }
+}
+
 applyTheme();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 render();
-syncPush().catch(() => {});
+protectData().finally(() => syncPush().catch(() => {}));

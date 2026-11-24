@@ -1,5 +1,6 @@
 // Settings, profile, targets, reminders + notifications, backup, install help.
-import { S, save, targets, currentWeight, replaceState, resetState, DEFAULT_REMINDERS } from './store.js';
+import { S, save, targets, currentWeight, replaceState, resetState, DEFAULT_REMINDERS, mergeInto, normalize, summarize } from './store.js';
+import { listSnapshots } from './vault.js';
 import { calcTargets, PHASES } from './calc.js';
 import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText } from './reminders.js';
 import { dayKey, addDays, parseDay, prettyDay, shortDate, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid, isStandalone, toMin } from './util.js';
@@ -8,7 +9,7 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.3.2';
+export const APP_VERSION = '1.3.3';
 
 export const THEMES = {
   island: 'Island',
@@ -87,7 +88,10 @@ export function renderSettings() {
     ${group('Backup', `
       <p class="muted small">Your data lives only on this phone. Export a backup now and then (save it to Files / Drive) so you never lose your history.${backupAge != null ? ` Last backup: ${backupAge === 0 ? 'today' : backupAge + ' days ago'}.` : ' No backup yet.'}</p>
       <div class="btn-row">${btn('Export backup', 'backup-export', { ico: 'floppy' })}${btn('Import backup', 'backup-import')}</div>
-      <input type="file" id="backup-file" accept=".json,application/json,text/plain" hidden data-change="backup-file">`)}
+      <input type="file" id="backup-file" accept=".json,application/json,text/plain" hidden data-change="backup-file">
+      <p class="muted small">Importing a backup adds back anything missing - it won't delete what's on the phone now.</p>
+      <div class="btn-row">${btn('Restore points', 'snap-list', { ico: 'hourglass' })}</div>
+      <p class="muted small">Macros also saves a restore point every day and before every update, right on this phone.</p>`)}
 
     ${group('Program', `<p class="muted small">Restore the default DE/DT 4-day program (your workout history is kept).</p>${btn('Reset program to default', 'reset-program')}`)}
 
@@ -125,7 +129,8 @@ on({
   'backup-export': async () => {
     S.settings.lastBackup = Date.now(); save(true);
     const ok = await saveFile(`macros-backup-${dayKey()}.json`, JSON.stringify(S, null, 1));
-    if (ok) toast('Backup exported', 'floppy');
+    const sm = summarize(S);
+    if (ok) toast(`Backup saved: ${sm.food} food entries, ${sm.weights} weigh-ins`, 'floppy');
     rerender();
   },
   'backup-import': () => document.getElementById('backup-file').click(),
@@ -135,13 +140,27 @@ on({
     try {
       const data = JSON.parse(await file.text());
       if (!data || !data.profile || !data.days) throw new Error('not a backup');
-      if (!(await confirmBox('Replace everything on this phone with this backup?', 'Import backup', 'Replace'))) return;
-      replaceState(data);
-      toast('Backup restored', 'floppy');
-      location.reload();
+      const sm = summarize(data);
+      const choice = await msgBox({
+        title: 'Import backup', ico: 'floppy',
+        text: `<p>This backup has <b>${sm.food}</b> food entries${sm.lastFoodDay ? ` (latest ${esc(prettyDay(sm.lastFoodDay))})` : ''}, <b>${sm.weights}</b> weigh-ins and <b>${sm.workouts}</b> workouts.</p>
+          <p><b>Merge</b> adds anything missing and keeps everything already on this phone. <b>Replace</b> wipes this phone and uses only the backup.</p>`,
+        buttons: [['Merge', 'merge'], ['Replace', 'replace'], ['Cancel', false]],
+      });
+      if (choice === 'merge') {
+        const n = mergeInto(S, normalize(data));
+        save(true); rerender();
+        msgBox({ title: 'Backup merged', ico: 'check', text: `<p>Added ${n.food} food entries, ${n.weights} weigh-ins and ${n.workouts} workouts. Nothing on this phone was removed.</p>` });
+      } else if (choice === 'replace') {
+        if (!(await confirmBox('Wipe this phone and use only the backup? Anything logged after the backup was made will be lost.', 'Replace everything', 'Replace'))) return;
+        replaceState(data);
+        toast('Backup restored', 'floppy');
+        location.reload();
+      }
     } catch (e) {
       msgBox({ title: 'Import failed', text: 'That file isn\'t a Macros backup.' });
     }
+    el.value = '';
   },
   'reset-program': async () => {
     if (!(await confirmBox('Replace your program days with the default DE/DT program?'))) return;
@@ -153,7 +172,36 @@ on({
     resetState(); location.hash = '#/today'; location.reload();
   },
   'install-help': () => openInstallHelp(),
+  'snap-list': () => openSnapshots(),
+  'snap-merge': async (el) => {
+    const snap = snapCache.find((x) => x.key === el.dataset.key);
+    if (!snap) return;
+    const n = mergeInto(S, normalize(snap.json));
+    save(true); closeModal(); rerender();
+    msgBox({ title: 'Restore point added back', ico: 'check', text: `<p>Added back ${n.food} food entries, ${n.weights} weigh-ins and ${n.workouts} workouts. Nothing on this phone was removed.</p>` });
+  },
 });
+
+// ================= Restore points =================
+let snapCache = [];
+async function openSnapshots() {
+  snapCache = await listSnapshots();
+  const now = summarize(S);
+  const fmtAt = (at) => { const d = new Date(at); return `${prettyDay(dayKey(d))} ${fmtTime(`${d.getHours()}:${d.getMinutes()}`)}`; };
+  const rows = snapCache.map((s) => {
+    let sm = null;
+    try { sm = summarize(JSON.parse(s.json)); } catch (e) { /* unreadable */ }
+    return `<div class="row static"><span class="row-main"><span class="row-name">${esc(s.label)}</span>
+      <span class="row-sub">${esc(fmtAt(s.at))}${sm ? ` · ${sm.food} food · ${sm.weights} weigh-ins · ${sm.workouts} workouts` : ''}</span></span>
+      ${sm ? btn('Add back', 'snap-merge', { data: `data-key="${esc(s.key)}"` }) : ''}</div>`;
+  }).join('');
+  openModal(() => win('Restore Points', `
+    <p class="muted small">Copies saved automatically on this phone. <b>Add back</b> puts back anything missing from that point - it never deletes what you have now.</p>
+    <p class="small">Right now: ${now.food} food entries, ${now.weights} weigh-ins, ${now.workouts} workouts.</p>
+    <div class="list">${rows || '<p class="empty">No restore points yet - the first one is saved the next time you open the app.</p>'}</div>
+    <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>
+  `, { cls: 'dialog', close: 'modal-close', ico: 'hourglass' }));
+}
 
 // ================= Install help =================
 export function openInstallHelp() {
@@ -175,7 +223,8 @@ export function openInstallHelp() {
     ${isStandalone() ? `<p class="ok-line">${icon('check', 16)} You're running the installed app. You're all set.</p>` : ''}
     ${ios || !android ? group('iPhone', iosSteps) : ''}
     ${android || !ios ? group('Android', androidSteps) : ''}
-    <p class="muted small">Important on iPhone: the home-screen app keeps its own data, separate from Safari. Do your logging from the icon. Moving phones? Export a backup in Control Panel first.</p>
+    <p class="muted small">Important on iPhone: the home-screen app keeps its own data, separate from Safari. Do your logging from the icon.</p>
+    <p class="muted small"><b>Removing the app from your home screen deletes its data.</b> Before removing or re-adding it (or moving phones), tap Export backup in Control Panel, and right after re-adding, tap Import backup.</p>
     <div class="btn-row">${btn('Got it', 'modal-close', { cls: 'primary grow' })}</div>
   `, { cls: 'dialog', close: 'modal-close', ico: 'phone' }));
 }

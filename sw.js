@@ -1,6 +1,6 @@
 // Service worker: makes Macros work offline and lets updates roll out.
 // Bump VERSION on every deploy so phones pick up the new files.
-const VERSION = '1.3.2';
+const VERSION = '1.3.3';
 const CACHE = 'macros-' + VERSION;
 
 const ASSETS = [
@@ -23,6 +23,7 @@ const ASSETS = [
   './js/today.js',
   './js/ui.js',
   './js/util.js',
+  './js/vault.js',
   './js/weight.js',
   './js/wizard.js',
   './art/sky.png',

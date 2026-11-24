@@ -30,6 +30,13 @@ Macro targets: Mifflin-St Jeor BMR × training-phase activity factor, ±500 kcal
 
 > On iPhone the home-screen app keeps its own storage, separate from Safari. Always log from the icon.
 > Data stays on the phone. Use **Control Panel → Export backup** now and then.
+> **Removing the app from the home screen deletes its data.** Export a backup first, then use Import backup → Merge after re-adding.
+
+## Data safety
+
+- Every save goes to `localStorage` and to an IndexedDB mirror (`js/vault.js`). At startup, if the main copy is missing, unreadable or older than the mirror, the app restores from the mirror. Unreadable data is set aside under another key, never overwritten.
+- Restore points are taken automatically: before every app update and once a day (the last 14 are kept). **Control Panel → Restore points → Add back** merges one in.
+- **Import backup** defaults to **Merge**, which adds what's missing and never deletes what's on the phone. **Replace** is still available and asks twice.
 
 ## Notifications
 

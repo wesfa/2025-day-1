@@ -1,5 +1,6 @@
-// App state: one JSON blob in localStorage. Everything stays on the phone.
+// App state: one JSON blob in localStorage, mirrored to IndexedDB (see vault.js). Everything stays on the phone.
 import { dayKey, addDays, uid, parseDay } from './util.js';
+import { mirror } from './vault.js';
 import { DEFAULT_TEMPLATES, EX_BY_ID } from './program.js';
 import { FOOD_BY_ID } from './foods.js';
 import { calcTargets } from './calc.js';
@@ -55,16 +56,31 @@ function defaults() {
   };
 }
 
+// The saved data exactly as it was when the app opened (before any upgrade steps); used for restore points.
+export let rawAtLoad = null;
 export let S = load();
 
 function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return migrate(JSON.parse(raw));
-  } catch (e) {
-    console.warn('load failed', e);
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) { /* storage blocked */ }
+  rawAtLoad = raw;
+  if (raw) {
+    try {
+      return migrate(JSON.parse(raw));
+    } catch (e) {
+      // Never let a read problem turn into data loss: park the raw data under another key
+      // (it is also still in the IndexedDB mirror) and start the app without overwriting it.
+      console.warn('load failed', e);
+      try { localStorage.setItem(`${KEY}:unreadable:${Date.now()}`, raw); } catch (e2) { /* ignore */ }
+      rawAtLoad = null;
+    }
   }
   return defaults();
+}
+
+// Run saved data from any older version through the same upgrade steps (for backups / restore points)
+export function normalize(data) {
+  return migrate(typeof data === 'string' ? JSON.parse(data) : JSON.parse(JSON.stringify(data)));
 }
 
 function migrate(s) {
@@ -97,15 +113,21 @@ function migrate(s) {
 }
 
 let saveTimer = null;
+// The mirror is switched on after startup has checked it for anything newer (see app.js)
+let mirrorOn = false;
+export function enableMirror() { mirrorOn = true; }
 export function save(now = false) {
   clearTimeout(saveTimer);
   const doSave = () => {
+    S.savedAt = Date.now();
+    const json = JSON.stringify(S);
     try {
-      localStorage.setItem(KEY, JSON.stringify(S));
+      localStorage.setItem(KEY, json);
     } catch (e) {
       console.error('save failed', e);
       alert('Could not save - storage may be full. Export a backup from Settings.');
     }
+    if (mirrorOn) mirror(json);
   };
   if (now) doSave(); else saveTimer = setTimeout(doSave, 150);
 }
@@ -119,6 +141,53 @@ export function replaceState(next) {
 export function resetState() {
   S = defaults();
   save(true);
+}
+
+// Add anything from `from` (a backup or restore point) that's missing here. Never removes or
+// overwrites what's already on the phone - except on a fresh, not-yet-set-up phone, where the
+// profile and settings come across too.
+export function mergeInto(into, from) {
+  const n = { food: 0, weights: 0, workouts: 0, other: 0 };
+  if (!from || typeof from !== 'object') return n;
+  const copy = (x) => JSON.parse(JSON.stringify(x));
+  if (!into.setupDone && from.setupDone) {
+    for (const k of ['profile', 'targets', 'schedule', 'reminders', 'notify', 'settings', 'templates']) if (from[k]) into[k] = copy(from[k]);
+    into.setupDone = true;
+    n.other++;
+  }
+  for (const [k, d] of Object.entries(from.days || {})) {
+    const cur = into.days[k] || (into.days[k] = { food: [], water: 0 });
+    const have = new Set(cur.food.map((e) => e.id));
+    for (const e of d.food || []) if (!have.has(e.id)) { cur.food.push(copy(e)); n.food++; }
+    if ((d.water || 0) > (cur.water || 0)) cur.water = d.water;
+  }
+  for (const [k, v] of Object.entries(from.weights || {})) if (into.weights[k] == null) { into.weights[k] = v; n.weights++; }
+  const addById = (name, counter = 'other', keep = () => true) => {
+    into[name] = into[name] || [];
+    const have = new Set(into[name].map((x) => x.id));
+    for (const x of from[name] || []) if (keep(x) && !have.has(x.id)) { into[name].push(copy(x)); n[counter]++; }
+  };
+  addById('workouts', 'workouts', (w) => !!w.end);
+  addById('customFoods'); addById('savedMeals'); addById('customEx'); addById('templates');
+  if (from.schedule && into.schedule) {
+    into.schedule.dates = into.schedule.dates || [];
+    const have = new Set(into.schedule.dates.map((d) => d.id));
+    for (const d of from.schedule.dates || []) if (!have.has(d.id)) { into.schedule.dates.push(copy(d)); n.other++; }
+  }
+  for (const [k, v] of Object.entries(from.foodCache || {})) if (!into.foodCache[k]) into.foodCache[k] = v;
+  into.favs = [...new Set([...(into.favs || []), ...(from.favs || [])])];
+  into.recent = [...new Set([...(into.recent || []), ...(from.recent || [])])].slice(0, 60);
+  return n;
+}
+
+export function summarize(s) {
+  const days = Object.entries((s && s.days) || {}).filter(([, d]) => (d.food || []).length);
+  return {
+    food: days.reduce((a, [, d]) => a + d.food.length, 0),
+    lastFoodDay: days.map(([k]) => k).sort().pop() || null,
+    weights: Object.keys((s && s.weights) || {}).length,
+    workouts: ((s && s.workouts) || []).filter((w) => w.end).length,
+  };
 }
 
 // ---------- Food ----------
