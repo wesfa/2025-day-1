@@ -53,7 +53,7 @@ export function renderWeight() {
     paceMsg = `Trend: <b>${r > 0 ? '+' : ''}${r1(r)} lb/week</b> (plan ${plan > 0 ? '+' : ''}${r1(plan)}). `;
     if (Math.abs(st.toGo) <= 1) paceMsg += 'You\'re at your goal - eat at maintenance.';
     else if (onPace) paceMsg += 'Right on track. Keep doing what you\'re doing.';
-    else if (st.dir > 0) paceMsg += `Gaining slow - add ~250 kcal/day (you're set to ${tg.cal}).`;
+    else if (st.dir > 0) paceMsg += `Gaining slow - add ~250 kcal/day (your average is ${tg.avgCal}).`;
     else paceMsg += `Losing slow - trim ~250 kcal/day, mostly from snacks/drinks.`;
   }
 

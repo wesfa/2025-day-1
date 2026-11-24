@@ -20,6 +20,9 @@ It installs to your phone's home screen like a real app, works offline, and upda
 | **Control Panel** | Profile, auto-calculated macro targets (or enter your own), 7 color schemes (default **Meadow**: pixel hill-and-sky wallpaper with drifting clouds and glossy blue windows; **Island**: pixel beach with twinkling water), backup export/import |
 
 Macro targets: Mifflin-St Jeor BMR × training-phase activity factor, ±500 kcal per lb/week of goal change; ~1 g protein per lb, 25% fat, the rest carbs.
+Training-day / rest-day targets (on by default): the same weekly total, shifted toward lift/practice days. Training and rest days are
+15% of the average apart, and the difference is all carbs. Planned lift days come from Control Panel, a finished workout makes that day a
+training day, and any day can be switched on Today.
 
 ## Put it on your phone
 

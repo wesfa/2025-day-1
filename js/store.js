@@ -52,7 +52,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'meadow', themeV: 3, readAdded: true, sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'meadow', themeV: 3, readAdded: true, dayTargets: true, liftDays: [1, 2, 4, 5], sound: true, lastBackup: 0, restAuto: true },
   };
 }
 
@@ -260,12 +260,39 @@ export function currentWeight() {
 }
 
 // ---------- Targets ----------
-export function targets() {
-  if (S.targets.auto) {
-    const t = calcTargets(S.profile, currentWeight());
-    return { ...t, auto: true };
-  }
-  return { ...calcTargets(S.profile, currentWeight()), ...S.targets };
+// Training day or rest day? A finished (or in-progress) workout always makes it a training day;
+// otherwise a choice made on Today wins, otherwise the planned lift/practice days decide.
+export function dayType(key = dayKey()) {
+  if (S.workouts.some((w) => w.date === key)) return 'train';
+  const d = S.days[key];
+  if (d && (d.dayType === 'train' || d.dayType === 'rest')) return d.dayType;
+  return (S.settings.liftDays || []).includes(parseDay(key).getDay()) ? 'train' : 'rest';
+}
+
+// Calorie/macro targets for a day. The weekly total is the same as eating the average every day;
+// with training/rest days on, training days get more (mostly carbs) and rest days get less.
+export const DAY_SWING = 0.15; // gap between a training day and a rest day, as a share of the average
+export function daySplit(avgCal) {
+  const T = (S.settings.liftDays || []).length;
+  if (!S.settings.dayTargets || T <= 0 || T >= 7) return null;
+  const swing = avgCal * DAY_SWING;
+  const r5 = (n) => Math.round(n / 5) * 5;
+  return { up: r5((swing * (7 - T)) / 7), down: r5((swing * T) / 7), days: T };
+}
+export function targets(key = dayKey()) {
+  const base = S.targets.auto
+    ? { ...calcTargets(S.profile, currentWeight()), auto: true }
+    : { ...calcTargets(S.profile, currentWeight()), ...S.targets, auto: false };
+  const out = { ...base, avgCal: base.cal, avgC: base.c, dayType: null, dayDelta: 0 };
+  const split = daySplit(base.cal);
+  if (!split) return out;
+  const type = dayType(key);
+  const delta = type === 'train' ? split.up : -split.down;
+  out.cal = base.cal + delta;
+  out.c = Math.max(0, base.c + Math.round(delta / 4 / 5) * 5); // the difference is all carbs
+  out.dayType = type;
+  out.dayDelta = delta;
+  return out;
 }
 
 // ---------- Exercises / workouts ----------

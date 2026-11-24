@@ -6,6 +6,7 @@ import { icon } from './icons.js';
 
 export function weekStats(endKey = dayKey()) {
   const tg = targets();
+  tg.cal = tg.avgCal; tg.c = tg.avgC; // compare the week against the average day
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const k = addDays(endKey, -i);
@@ -18,7 +19,7 @@ export function weekStats(endKey = dayKey()) {
   const avgCal = logged.reduce((a, d) => a + d.cal, 0) / n;
   const avgP = logged.reduce((a, d) => a + d.p, 0) / n;
   const proteinHits = logged.filter((d) => d.p >= tg.p * 0.9).length;
-  const calHits = logged.filter((d) => Math.abs(d.cal - tg.cal) <= tg.cal * 0.1).length;
+  const calHits = logged.filter((d) => { const t = targets(d.k).cal; return Math.abs(d.cal - t) <= t * 0.1; }).length;
   const from = addDays(endKey, -6);
   const lifts = doneWorkouts().filter((w) => w.date >= from && w.date <= endKey).length;
   const avgIn = (a, b) => {

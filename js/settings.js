@@ -1,5 +1,5 @@
 // Settings, profile, targets, reminders + notifications, backup, install help.
-import { S, save, targets, currentWeight, replaceState, resetState, DEFAULT_REMINDERS, mergeInto, normalize, summarize } from './store.js';
+import { S, save, targets, daySplit, currentWeight, replaceState, resetState, DEFAULT_REMINDERS, mergeInto, normalize, summarize } from './store.js';
 import { listSnapshots } from './vault.js';
 import { calcTargets, PHASES } from './calc.js';
 import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText } from './reminders.js';
@@ -9,7 +9,7 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.6.0';
 
 export const THEMES = {
   meadow: 'Meadow',
@@ -61,10 +61,11 @@ export function renderSettings() {
       </form>`)}
 
     ${group('Daily targets', `
+      <p class="small">Average day:</p>
       <div class="target-grid">
-        <div class="stat sunken"><span>Calories</span><b class="vt">${tg.cal}</b></div>
+        <div class="stat sunken"><span>Calories</span><b class="vt">${tg.avgCal}</b></div>
         <div class="stat sunken"><span>Protein</span><b class="vt">${tg.p}g</b></div>
-        <div class="stat sunken"><span>Carbs</span><b class="vt">${tg.c}g</b></div>
+        <div class="stat sunken"><span>Carbs</span><b class="vt">${tg.avgC}g</b></div>
         <div class="stat sunken"><span>Fat</span><b class="vt">${tg.f}g</b></div>
         <div class="stat sunken"><span>Water</span><b class="vt">${tg.water}oz</b></div>
       </div>
@@ -76,6 +77,20 @@ export function renderSettings() {
         ${field('Water oz', numInput('water', S.targets.water))}</div>
         <div class="btn-row">${btn('Save targets', 't-save', { cls: 'primary grow', type: 'submit' })}</div></form>`}
       <p class="muted small">Coach or nutritionist gave you numbers? Turn off auto and type them in.</p>`)}
+
+    ${group('Training days vs rest days', (() => {
+      const sp = daySplit(tg.avgCal);
+      const days = S.settings.liftDays || [];
+      return `
+      <label class="check"><input type="checkbox" data-change="set-daytargets" ${S.settings.dayTargets ? 'checked' : ''}><span>Eat more on training days, less on rest days</span></label>
+      ${field('My lift / practice days', dayPicker('liftDays', days).replace(/name="liftDays"/g, 'name="liftDays" data-change="set-liftdays"'))}
+      ${sp ? `<div class="split-grid">
+          <div class="stat sunken"><span>Training day (${sp.days}/wk)</span><b class="vt">${tg.avgCal + sp.up}</b><small>+${sp.up} kcal · ${tg.avgC + Math.round(sp.up / 4 / 5) * 5}g carbs</small></div>
+          <div class="stat sunken"><span>Rest day (${7 - sp.days}/wk)</span><b class="vt">${tg.avgCal - sp.down}</b><small>-${sp.down} kcal · ${Math.max(0, tg.avgC - Math.round(sp.down / 4 / 5) * 5)}g carbs</small></div>
+        </div>
+        <p class="muted small">Same weekly total as eating the average every day - just moved toward the days you train. The extra is carbs to fuel the session; protein and fat stay the same. Finishing a workout makes that day a training day automatically, and you can switch any day on Today.</p>`
+      : `<p class="muted small">${S.settings.dayTargets ? 'Pick at least one (and not all seven) training days to split targets.' : 'Off: every day uses the average target.'}</p>`}`;
+    })())}
 
     ${aiSettingsGroup()}
 
@@ -126,6 +141,11 @@ on({
   },
   theme: (el) => { S.settings.theme = el.value; save(); applyTheme(); rerender(); },
   'set-sound': (el) => { S.settings.sound = el.checked; save(); },
+  'set-daytargets': (el) => { S.settings.dayTargets = el.checked; save(); rerender(); },
+  'set-liftdays': () => {
+    S.settings.liftDays = [...document.querySelectorAll('input[name="liftDays"]:checked')].map((x) => Number(x.value)).sort();
+    save(); rerender();
+  },
   'set-restauto': (el) => { S.settings.restAuto = el.checked; save(); },
   'backup-export': async () => {
     S.settings.lastBackup = Date.now(); save(true);

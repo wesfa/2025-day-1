@@ -47,7 +47,7 @@ function suggestions(left) {
 export function renderToday() {
   const k = dayKey();
   const t = totals(k);
-  const tg = targets();
+  const tg = targets(k);
   const d = peekDay(k);
   const left = { cal: tg.cal - t.cal, p: tg.p - t.p, c: tg.c - t.c, f: tg.f - t.f };
   const wst = weightStats();
@@ -80,7 +80,8 @@ export function renderToday() {
   if (act) train = `<p><b>${esc(act.name)}</b> is in progress.</p>${btn('Resume workout', 'go-workout', { cls: 'primary wide', ico: 'dumbbell' })}`;
   else if (doneToday.length) train = `<p class="ok-line">${icon('check', 16)} Done: ${esc(doneToday.map((w) => w.name).join(', '))}</p><p class="muted small">Recovery = protein + carbs + sleep. Get 8+ hours.</p>`;
   else if (next) train = `<p class="next-name">${esc(next.name)}</p><p class="muted small">${next.items.slice(0, 4).map((i) => esc(getEx(i.ex).name)).join(' · ')}${next.items.length > 4 ? ' ...' : ''}</p>
-      <div class="btn-row">${btn('Start', 'start-tpl', { cls: 'primary grow', data: `data-id="${next.id}"`, ico: 'dumbbell' })}${btn('Rest day', 'nav', { data: 'data-to="#/gym"' })}</div>`;
+      <div class="btn-row">${btn('Start', 'start-tpl', { cls: 'primary grow', data: `data-id="${next.id}"`, ico: 'dumbbell' })}${tg.dayType === 'rest' ? '' : btn('Rest day', 'day-set', { data: 'data-type="rest"' })}</div>
+      ${tg.dayType === 'rest' ? '<p class="muted small">Rest day - recover, stretch, and still hit your protein.</p>' : ''}`;
   else train = btn('Open gym', 'nav', { data: 'data-to="#/gym"' });
 
   const sug = suggestions(left);
@@ -102,6 +103,11 @@ export function renderToday() {
     ${rule ? `<div class="day-rule"><span class="tag kind-${rule.kind}">${DATE_KINDS[rule.kind]}</span> ${esc(rule.label)}${rule.kind === 'early' && rule.end ? ` - out at ${fmtTime(rule.end)}` : ''}</div>` : ''}
     ${weigh}
     ${due.length ? `<div class="alert soft">${icon('bell', 16)} <span>${due.map((r) => esc(r.label)).join(' · ')}</span></div>` : ''}
+    ${tg.dayType ? `<div class="day-type">
+      <span class="tag dt-${tg.dayType}">${tg.dayType === 'train' ? 'Training day' : 'Rest day'}</span>
+      <span class="muted small">${tg.dayDelta > 0 ? '+' : ''}${fmt(tg.dayDelta)} kcal vs. your average</span>
+      ${doneToday.length || act ? '' : btn(tg.dayType === 'train' ? 'Rest today' : 'Training today', 'day-set', { cls: 'chip', data: `data-type="${tg.dayType === 'train' ? 'rest' : 'train'}"` })}
+    </div>` : ''}
     <div class="cal-box panel sunken">
       <div class="cal-nums">
         <div><span>Eaten</span><b class="vt">${fmt(t.cal)}</b></div>
@@ -152,6 +158,14 @@ on({
   },
   'hide-install': () => { S.settings.hideInstallUntil = Date.now() + 3 * 86400000; save(); rerender(); },
   'hide-backup': () => { S.settings.hideBackupUntil = Date.now() + 7 * 86400000; save(); rerender(); },
+  'day-set': (el) => {
+    const d = day(dayKey());
+    d.dayType = el.dataset.type;
+    save(); buzz(10);
+    const t = targets(dayKey());
+    toast(`${t.dayType === 'train' ? 'Training' : 'Rest'} day: ${fmt(t.cal)} kcal, ${t.c}g carbs`, t.dayType === 'train' ? 'dumbbell' : 'check');
+    rerender();
+  },
   'sug-add': (el) => {
     const f = getFood(el.dataset.fid);
     if (f) openFoodDetail(f, { date: dayKey(), meal: mealForNow() });

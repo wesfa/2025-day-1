@@ -22,7 +22,7 @@ const macroLine = (o, q = 1) => `<span class="mac">P ${r0(o.p * q)} · C ${r0(o.
 export function renderFood() {
   const k = view.date;
   const t = totals(k);
-  const tg = targets();
+  const tg = targets(k);
   const yesterday = addDays(k, -1);
   const d = peekDay(k);
 
@@ -52,6 +52,7 @@ export function renderFood() {
       <button class="btn grow" data-act="diary-today">${esc(prettyDay(k))}</button>
       <button class="btn sq" data-act="diary-day" data-d="1" aria-label="Next day">${icon('right', 10)}</button>
     </div>
+    ${tg.dayType ? `<div class="day-type"><span class="tag dt-${tg.dayType}">${tg.dayType === 'train' ? 'Training day' : 'Rest day'}</span><span class="muted small">goal ${fmt(tg.cal)} kcal</span></div>` : ''}
     <div class="panel sunken summary">
       <div class="sum-row"><span>Eaten <b class="vt">${fmt(t.cal)}</b></span><span>Goal <b class="vt">${fmt(tg.cal)}</b></span><span>${left >= 0 ? 'Left' : 'Over'} <b class="vt ${left < 0 ? 'bad' : ''}">${fmt(Math.abs(left))}</b></span></div>
       ${bar(t.cal, tg.cal)}
@@ -244,7 +245,7 @@ function renderFoodDetail() {
   const q = fd.qty;
   const fav = S.favs.includes(f.id);
   const canGram = f.g > 0;
-  const tg = targets();
+  const tg = targets(fd.date);
   const t = totals(fd.date);
   const qtyVal = fd.unit === 'g' ? r0(q * f.g) : r1(q);
   return win(esc(f.name), `
