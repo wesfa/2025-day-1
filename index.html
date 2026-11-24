@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" data-theme="classic">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Trenches</title>
+  <meta name="description" content="Nutrition, lifting and weigh-in tracker for defensive linemen.">
+  <meta name="theme-color" content="#008080">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Trenches">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/dotgothic16.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/vt323.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <main id="app" aria-live="polite">
+    <div class="boot">Loading TRENCHES...</div>
+  </main>
+  <div id="restbar" class="restbar raised" role="timer"></div>
+  <nav id="startmenu" class="startmenu raised" aria-label="Start menu"></nav>
+  <nav id="taskbar" class="taskbar" aria-label="Taskbar"></nav>
+  <div id="modals"></div>
+  <div id="toast" class="toast" role="status"></div>
+  <noscript><p style="padding:20px;color:#fff">Trenches needs JavaScript turned on.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

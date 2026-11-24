@@ -1,0 +1,511 @@
+// Gym: program, workout logger, history, exercise library, plate calculator.
+import { S, save, getEx, allExercises, activeWorkout, doneWorkouts, lastSetsFor, nextTemplate } from './store.js';
+import { EX_CATS, SET_LABELS, DEFAULT_TEMPLATES } from './program.js';
+import { e1rm, platesFor } from './calc.js';
+import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, buzz } from './util.js';
+import { win, group, btn, field, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
+import { icon } from './icons.js';
+
+const firstNum = (s) => { const m = String(s || '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
+
+// ================= Gym home =================
+export function renderGym() {
+  const act = activeWorkout();
+  const next = nextTemplate();
+  const hist = doneWorkouts().slice(0, 8);
+  const todayDone = doneWorkouts().filter((w) => w.date === dayKey());
+
+  const top = act
+    ? group('Workout in progress', `<p><b>${esc(act.name)}</b> - started ${fmtDuration(Date.now() - act.start)} ago</p>${btn('Resume workout', 'go-workout', { cls: 'primary wide' })}`)
+    : group('Next up', `
+        ${todayDone.length ? `<p class="ok-line">${icon('check', 16)} Already trained today: ${esc(todayDone.map((w) => w.name).join(', '))}</p>` : ''}
+        ${next ? `<p class="next-name">${esc(next.name)}</p><p class="muted small">${next.items.map((i) => esc(getEx(i.ex).name)).join(' · ')}</p>
+        ${btn('Start workout', 'start-tpl', { cls: 'primary wide', data: `data-id="${next.id}"`, ico: 'dumbbell' })}` : '<p>No program days yet.</p>'}`);
+
+  const prog = S.templates.map((t) => `
+    <div class="row static">
+      <span class="row-main"><span class="row-name">${esc(t.name)}</span><span class="row-sub">${t.items.length} exercises</span></span>
+      <span class="row-btns">${btn('Start', 'start-tpl', { data: `data-id="${t.id}"`, disabled: !!act })}${btn('Edit', 'edit-tpl', { data: `data-id="${t.id}"` })}</span>
+    </div>`).join('');
+
+  const histRows = hist.length ? hist.map((w) => `
+    <button class="row" data-act="view-workout" data-id="${w.id}">
+      <span class="row-main"><span class="row-name">${esc(w.name)}</span><span class="row-sub">${esc(prettyDay(w.date))} · ${fmtDuration(w.end - w.start)} · ${w.ex.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0)} sets</span></span>
+      <span class="row-num">${fmt(volume(w))}<small> lb</small></span>
+    </button>`).join('') : '<p class="empty">Finished workouts show up here.</p>';
+
+  return win('Gym - D-Line Program', `
+    ${top}
+    ${group('My program (DE / DT)', prog + `<div class="btn-row">${btn('+ New day', 'new-tpl')}${btn('Empty workout', 'start-empty', { disabled: !!act })}</div>`)}
+    ${group('Tools', `<div class="btn-grid">
+      ${btn('Exercises', 'ex-library', { ico: 'book' })}
+      ${btn('Plates', 'plate-calc', { ico: 'plate' })}
+      ${btn('PRs', 'show-prs', { ico: 'trophy' })}
+      ${btn('Rest timer', 'rest-start', { ico: 'hourglass', data: 'data-s="90"' })}
+    </div>`)}
+    ${group('History', histRows)}
+  `, { ico: 'dumbbell' });
+}
+
+function volume(w) {
+  let v = 0;
+  for (const e of w.ex) {
+    const t = getEx(e.ex).type;
+    if (t !== 'weight') continue;
+    for (const s of e.sets) if (s.done) v += num(s.w) * num(s.r);
+  }
+  return v;
+}
+
+function makeExEntry(exId, sets = 3, reps = '') {
+  return { ex: exId, target: reps ? `${sets} x ${reps}` : '', sets: Array.from({ length: sets }, () => ({ w: '', r: '', done: false })), tr: reps };
+}
+
+function startWorkout(tpl) {
+  if (activeWorkout()) { go('#/workout'); return; }
+  const w = {
+    id: uid(), date: dayKey(), start: Date.now(), end: null,
+    tid: tpl ? tpl.id : null, name: tpl ? tpl.name : 'Workout',
+    ex: tpl ? tpl.items.map((i) => makeExEntry(i.ex, i.sets, i.reps)) : [], notes: '',
+  };
+  S.workouts.push(w);
+  S.activeId = w.id;
+  save(true);
+  unlockAudio();
+  go('#/workout');
+}
+
+on({
+  'go-workout': () => go('#/workout'),
+  'start-tpl': (el) => startWorkout(S.templates.find((t) => t.id === el.dataset.id)),
+  'start-empty': () => startWorkout(null),
+  'view-workout': (el) => openWorkoutDetail(el.dataset.id),
+  'ex-library': () => openExPicker(null),
+  'plate-calc': (el) => openPlates(num(el.dataset.w) || 225),
+  'show-prs': () => openPRs(),
+  'edit-tpl': (el) => openTplEditor(el.dataset.id),
+  'new-tpl': () => {
+    const t = { id: 't' + uid(), name: `Day ${S.templates.length + 1} - Custom`, items: [] };
+    S.templates.push(t); save(); openTplEditor(t.id);
+  },
+});
+
+// ================= Workout logger =================
+export function renderWorkout() {
+  const w = activeWorkout();
+  if (!w) {
+    return win('Workout', `<p>No workout running.</p>${btn('Go to Gym', 'nav', { data: 'data-to="#/gym"', cls: 'primary' })}`, { ico: 'dumbbell' });
+  }
+  const blocks = w.ex.map((e, i) => {
+    const ex = getEx(e.ex);
+    const [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
+    const last = lastSetsFor(e.ex, w.id);
+    const lastTxt = last ? last.sets.map((s) => (num(s.w) ? `${s.w}x${s.r}` : `${s.r}`)).join(', ') : '';
+    const sug = overload(ex, e, last);
+    const rows = e.sets.map((s, j) => {
+      const ls = last ? last.sets[Math.min(j, last.sets.length - 1)] : null;
+      const phW = sug && sug.up ? sug.w : ls && num(ls.w) ? ls.w : (ex.type === 'weight' ? '' : '0');
+      const phR = firstNum(e.tr) || (ls ? ls.r : '');
+      return `<div class="set ${s.done ? 'done' : ''}">
+        <span class="set-n">${j + 1}</span>
+        <input class="inp" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" placeholder="${esc(phW)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1}">
+        <input class="inp" type="number" inputmode="numeric" step="any" value="${esc(s.r)}" placeholder="${esc(phR)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="r" aria-label="${l2}">
+        <button class="btn sq chk ${s.done ? 'on' : ''}" data-act="set-done" data-i="${i}" data-j="${j}" aria-label="Done">${s.done ? icon('check', 16) : ''}</button>
+      </div>`;
+    }).join('');
+    return `<section class="group ex-block">
+      <div class="group-title"><button class="link" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button></div>
+      <div class="ex-meta">${e.target ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${lastTxt ? `<span class="muted small">Last: ${esc(lastTxt)}</span>` : '<span class="muted small">First time - start light, own the form</span>'}</div>
+      ${sug ? `<div class="coach-tip ${sug.up ? 'up' : ''}">${sug.up ? icon('up', 10) : ''} ${esc(sug.msg)}</div>` : ''}
+      <div class="set set-head"><span class="set-n">#</span><span>${l1}</span><span>${l2}</span><span></span></div>
+      ${rows}
+      <div class="btn-row tight">
+        ${btn('+ Set', 'set-add', { data: `data-i="${i}"` })}
+        ${btn('- Set', 'set-del', { data: `data-i="${i}"`, disabled: e.sets.length <= 1 })}
+        ${ex.type === 'weight' ? btn('', 'plate-calc-ex', { data: `data-i="${i}"`, ico: 'plate', cls: 'sq' }) : ''}
+        ${btn('', 'ex-up', { data: `data-i="${i}"`, ico: 'up', cls: 'sq', disabled: i === 0 })}
+        ${btn('', 'ex-remove', { data: `data-i="${i}"`, ico: 'close', cls: 'sq' })}
+      </div>
+    </section>`;
+  }).join('');
+
+  const doneSets = w.ex.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
+  const allSets = w.ex.reduce((a, e) => a + e.sets.length, 0);
+  return win(esc(w.name), `
+    <div class="wo-head panel sunken">
+      <span>${icon('hourglass', 16)} <b class="vt" id="wo-clock">${fmtDuration(Date.now() - w.start)}</b></span>
+      <span>Sets <b class="vt">${doneSets}/${allSets}</b></span>
+      <span>Vol <b class="vt">${fmt(volume(w))}</b></span>
+    </div>
+    ${blocks || '<p class="empty">Add an exercise to get started.</p>'}
+    <div class="btn-row">${btn('+ Add exercise', 'wo-add-ex', { cls: 'wide' })}</div>
+    ${field('Notes', `<textarea class="inp" rows="2" data-change="wo-notes" placeholder="How did it feel? Anything hurt?">${esc(w.notes)}</textarea>`)}
+    <div class="btn-row">${btn('Finish workout', 'wo-finish', { cls: 'primary grow', ico: 'check' })}${btn('Discard', 'wo-discard', { cls: 'danger' })}</div>
+  `, { ico: 'dumbbell', cls: 'workout' });
+}
+
+on({
+  'set-val': (el) => {
+    const w = activeWorkout(); if (!w) return;
+    const s = w.ex[el.dataset.i].sets[el.dataset.j];
+    s[el.dataset.k] = el.value;
+    save();
+  },
+  'set-done': (el) => {
+    const w = activeWorkout(); if (!w) return;
+    const i = Number(el.dataset.i); const j = Number(el.dataset.j);
+    const e = w.ex[i]; const s = e.sets[j];
+    // Read whatever is typed right now (change event may not have fired yet)
+    const row = el.closest('.set');
+    const [inW, inR] = row.querySelectorAll('input');
+    s.w = inW.value; s.r = inR.value;
+    if (!s.done) {
+      if (s.w === '' && inW.placeholder !== '') s.w = inW.placeholder;
+      if (s.r === '' && inR.placeholder !== '') s.r = inR.placeholder;
+      if (s.r === '') { toast('Enter reps first', 'warn'); inR.focus(); return; }
+      s.done = true;
+      // carry weight forward into the next empty set
+      const nxt = e.sets[j + 1];
+      if (nxt && nxt.w === '' && s.w !== '') nxt.w = s.w;
+      buzz(20);
+      if (S.settings.restAuto) startRest(getEx(e.ex).rest || 90);
+    } else {
+      s.done = false;
+    }
+    save(); rerender();
+  },
+  'set-add': (el) => {
+    const w = activeWorkout(); const e = w.ex[el.dataset.i];
+    const last = e.sets[e.sets.length - 1] || { w: '', r: '' };
+    e.sets.push({ w: last.w, r: '', done: false });
+    save(); rerender();
+  },
+  'set-del': (el) => {
+    const w = activeWorkout(); const e = w.ex[el.dataset.i];
+    if (e.sets.length > 1) e.sets.pop();
+    save(); rerender();
+  },
+  'ex-up': (el) => {
+    const w = activeWorkout(); const i = Number(el.dataset.i);
+    if (i > 0) [w.ex[i - 1], w.ex[i]] = [w.ex[i], w.ex[i - 1]];
+    save(); rerender();
+  },
+  'ex-remove': async (el) => {
+    const w = activeWorkout(); const i = Number(el.dataset.i);
+    if (!(await confirmBox(`Remove ${esc(getEx(w.ex[i].ex).name)} from this workout?`))) return;
+    w.ex.splice(i, 1); save(); rerender();
+  },
+  'plate-calc-ex': (el) => {
+    const w = activeWorkout(); const e = w.ex[el.dataset.i];
+    const s = [...e.sets].reverse().find((x) => num(x.w));
+    const ls = lastSetsFor(e.ex, w.id);
+    openPlates(s ? num(s.w) : ls ? num(ls.sets[0].w) || 135 : 135);
+  },
+  'wo-add-ex': () => openExPicker((id) => {
+    const w = activeWorkout(); w.ex.push(makeExEntry(id, 3, '')); save(); closeAllModals(); rerender();
+  }),
+  'wo-notes': (el) => { const w = activeWorkout(); if (w) { w.notes = el.value; save(); } },
+  'wo-discard': async () => {
+    if (!(await confirmBox('Throw away this workout? Nothing will be saved.', 'Discard workout', 'Discard'))) return;
+    S.workouts = S.workouts.filter((x) => x.id !== S.activeId);
+    S.activeId = null; save(true); stopRest(); go('#/gym');
+  },
+  'wo-finish': async () => {
+    const w = activeWorkout(); if (!w) return;
+    // capture any typed-but-not-blurred values
+    document.querySelectorAll('[data-change="set-val"]').forEach((inp) => { w.ex[inp.dataset.i].sets[inp.dataset.j][inp.dataset.k] = inp.value; });
+    const doneSets = w.ex.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
+    if (!doneSets) {
+      if (await confirmBox('No sets are checked off. Discard this workout?', 'Finish', 'Discard')) {
+        S.workouts = S.workouts.filter((x) => x.id !== w.id); S.activeId = null; save(true); go('#/gym');
+      }
+      return;
+    }
+    const prs = findPRs(w);
+    w.end = Date.now();
+    // drop unchecked sets so history stays clean
+    w.ex.forEach((e) => { e.sets = e.sets.filter((s) => s.done); });
+    w.ex = w.ex.filter((e) => e.sets.length);
+    S.activeId = null;
+    save(true); stopRest();
+    go('#/gym');
+    if (prs.length) beep([523, 659, 784, 1047], 0.13);
+    await msgBox({
+      title: 'Workout complete',
+      ico: prs.length ? 'trophy' : 'check',
+      text: `<p><b>${esc(w.name)}</b></p>
+        <p>Time ${fmtDuration(w.end - w.start)} · ${doneSets} sets · ${fmt(volume(w))} lb moved</p>
+        ${prs.length ? `<p class="pr-line"><b>NEW PRs!</b></p><ul class="pr-list">${prs.map((p) => `<li>${esc(p.name)}: ${p.w} x ${p.r} (est. max ${r0(p.e)} lb)</li>`).join('')}</ul>` : '<p>Logged. Recover: protein + carbs within the next hour.</p>'}`,
+    });
+  },
+});
+
+// Progressive overload: hit every rep last time -> go up. Missed reps -> repeat the weight.
+const BIG_LOWER = new Set(['back-squat', 'front-squat', 'trap-dl', 'rdl', 'hip-thrust', 'sled-push']);
+function overload(ex, e, last) {
+  if (ex.type !== 'weight' || !last || !last.sets.length) return null;
+  const target = firstNum(e.tr);
+  const top = Math.max(...last.sets.map((s) => num(s.w)));
+  if (!target || !top) return null;
+  const topSets = last.sets.filter((s) => num(s.w) === top);
+  const hitAll = topSets.every((s) => num(s.r) >= target) && last.sets.length >= Math.min(3, e.sets.length);
+  if (hitAll) {
+    const inc = BIG_LOWER.has(ex.id) ? 10 : 5;
+    return { up: true, w: top + inc, msg: `You hit ${top} x ${target} last time - try ${top + inc} today` };
+  }
+  return { up: false, w: top, msg: `Missed some reps at ${top} - stay there and own it` };
+}
+
+// Best estimated 1RM per exercise in all finished workouts before `w`
+function bestBefore(exId, w) {
+  let best = 0;
+  for (const o of S.workouts) {
+    if (!o.end || o.id === w.id || o.start >= w.start) continue;
+    for (const e of o.ex) if (e.ex === exId) for (const s of e.sets) if (s.done) best = Math.max(best, e1rm(s.w, s.r));
+  }
+  return best;
+}
+function findPRs(w) {
+  const out = [];
+  for (const e of w.ex) {
+    if (getEx(e.ex).type !== 'weight') continue;
+    let top = null;
+    for (const s of e.sets) if (s.done) { const v = e1rm(s.w, s.r); if (v && (!top || v > top.e)) top = { e: v, w: num(s.w), r: num(s.r) }; }
+    if (!top) continue;
+    const prev = bestBefore(e.ex, w);
+    if (prev && top.e > prev + 0.5) out.push({ name: getEx(e.ex).name, ...top });
+  }
+  return out;
+}
+
+// ================= Rest timer (floats above the taskbar) =================
+let rest = { end: 0, total: 0, timer: null };
+export function startRest(sec) {
+  unlockAudio();
+  rest.total = sec; rest.end = Date.now() + sec * 1000;
+  clearInterval(rest.timer);
+  rest.timer = setInterval(tickRest, 250);
+  tickRest();
+}
+function stopRest() {
+  clearInterval(rest.timer); rest.end = 0;
+  const el = document.getElementById('restbar'); if (el) el.classList.remove('show');
+  document.body.classList.remove('resting');
+}
+function tickRest() {
+  const el = document.getElementById('restbar');
+  if (!el) return;
+  const left = rest.end - Date.now();
+  if (left <= 0) {
+    stopRest();
+    if (S.settings.sound) beep();
+    buzz([200, 100, 200]);
+    toast('Rest over - next set!', 'dumbbell');
+    return;
+  }
+  el.classList.add('show');
+  document.body.classList.add('resting');
+  const pct = 100 - (left / (rest.total * 1000)) * 100;
+  el.innerHTML = `<span class="rest-ico">${icon('hourglass', 16)}</span><span class="rest-lbl">REST</span><b class="vt rest-time">${fmtDuration(left + 999)}</b>
+    <div class="progress thin rest-bar"><div class="fill" style="width:${pct}%"></div></div>
+    <button class="btn sq" data-act="rest-add" data-s="-15">-15</button><button class="btn sq" data-act="rest-add" data-s="15">+15</button><button class="btn" data-act="rest-skip">Skip</button>`;
+}
+on({
+  'rest-start': (el) => startRest(Number(el.dataset.s) || 90),
+  'rest-add': (el) => { rest.end += Number(el.dataset.s) * 1000; rest.total = Math.max(rest.total, (rest.end - Date.now()) / 1000); tickRest(); },
+  'rest-skip': () => stopRest(),
+});
+
+// ================= Exercise picker / library =================
+const xp = { q: '', cat: '', onPick: null };
+export function openExPicker(onPick) {
+  xp.q = ''; xp.cat = ''; xp.onPick = onPick;
+  openModal(renderExPicker, { full: true });
+}
+function renderExPicker() {
+  const q = xp.q.toLowerCase();
+  const list = allExercises().filter((e) => (!xp.cat || e.cat === xp.cat) && (!q || e.name.toLowerCase().includes(q)));
+  const cats = [...EX_CATS, 'Custom'];
+  const byCat = cats.map((c) => {
+    const items = list.filter((e) => (e.cat || 'Custom') === c);
+    if (!items.length) return '';
+    return `<div class="sub-head">${esc(c)}</div>` + items.map((e) => `
+      <div class="row static">
+        <button class="row-main link-row" data-act="${xp.onPick ? 'xp-pick' : 'ex-info'}" data-id="${e.id}"><span class="row-name">${esc(e.name)}</span><span class="row-sub">${esc(e.why || e.cat)}</span></button>
+        <span class="row-btns">${xp.onPick ? btn('Add', 'xp-pick', { data: `data-id="${e.id}"`, cls: 'primary' }) : ''}${btn('?', 'ex-info', { data: `data-id="${e.id}"`, cls: 'sq' })}</span>
+      </div>`).join('');
+  }).join('');
+  return win(xp.onPick ? 'Add Exercise' : 'Exercise Library', `
+    <div class="search-row"><input id="xp-q" class="inp grow" type="search" placeholder="Search exercises..." value="${esc(xp.q)}" data-input="xp-q" autocomplete="off"></div>
+    <div class="field-inline">${select('cat', [['', 'All categories'], ...cats.map((c) => [c, c])], xp.cat, { data: 'data-change="xp-cat"' })}</div>
+    <div class="list">${byCat || '<p class="empty">No exercises match.</p>'}</div>
+    <div class="btn-row">${btn('+ Create exercise', 'xp-create')}</div>
+  `, { cls: 'full-win', close: 'modal-close', ico: 'book' });
+}
+let xpTimer;
+on({
+  'xp-q': (el) => {
+    xp.q = el.value; clearTimeout(xpTimer);
+    xpTimer = setTimeout(() => { drawModals(); const i = document.getElementById('xp-q'); if (i) { i.focus(); const n = i.value.length; try { i.setSelectionRange(n, n); } catch (e) { /* */ } } }, 120);
+  },
+  'xp-cat': (el) => { xp.cat = el.value; drawModals(); },
+  'xp-pick': (el) => xp.onPick && xp.onPick(el.dataset.id),
+  'xp-create': () => openModal(() => win('Create Exercise', `
+    <form id="xc" onsubmit="return false">
+      ${field('Name', '<input class="inp" name="name" placeholder="e.g. Sumo Deadlift">')}
+      ${field('Category', select('cat', [...EX_CATS, 'Custom'].map((c) => [c, c]), 'Custom'))}
+      ${field('What you log', select('type', [['weight', 'Weight x reps'], ['body', 'Bodyweight reps (+ optional weight)'], ['time', 'Time (seconds)'], ['dist', 'Distance (yards)']], 'weight'))}
+      ${field('Rest timer (sec)', '<input class="inp" name="rest" type="number" inputmode="numeric" value="90">')}
+      ${field('Coaching cues (one per line)', '<textarea class="inp" name="cues" rows="3"></textarea>')}
+      <div class="btn-row">${btn('Save', 'xc-save', { cls: 'primary grow', type: 'submit' })}${btn('Cancel', 'modal-close')}</div>
+    </form>`, { cls: 'dialog', close: 'modal-close' })),
+  'xc-save': () => {
+    const v = formData(document.getElementById('xc'));
+    if (!v.name.trim()) { toast('Name it', 'warn'); return; }
+    S.customEx.push({ id: 'x' + uid(), name: v.name.trim(), cat: v.cat, type: v.type, rest: num(v.rest, 90), cues: v.cues.split('\n').map((s) => s.trim()).filter(Boolean), why: '' });
+    save(); closeModal(); drawModals();
+  },
+  'ex-info': (el) => openExInfo(el.dataset.id),
+});
+
+function exHistory(exId) {
+  const out = [];
+  for (const w of doneWorkouts()) {
+    const e = w.ex.find((x) => x.ex === exId);
+    if (e) out.push({ date: w.date, sets: e.sets.filter((s) => s.done) });
+  }
+  return out;
+}
+
+function openExInfo(id) {
+  const ex = getEx(id);
+  const hist = exHistory(id);
+  let best = null;
+  for (const h of hist) for (const s of h.sets) { const v = e1rm(s.w, s.r); if (v && (!best || v > best.e)) best = { e: v, w: s.w, r: s.r, date: h.date }; }
+  openModal(() => win(esc(ex.name), `
+    ${ex.why ? `<p class="why">${esc(ex.why)}</p>` : ''}
+    ${ex.cues && ex.cues.length ? group('Coaching cues', `<ol class="cues">${ex.cues.map((c) => `<li>${esc(c)}</li>`).join('')}</ol>`) : ''}
+    ${best ? group('Personal best', `<p>${icon('trophy', 16)} <b>${best.w} x ${best.r}</b> on ${esc(prettyDay(best.date))}</p><p>Estimated 1-rep max: <b class="vt">${r0(best.e)}</b> lb</p>`) : ''}
+    ${group('History', hist.length ? hist.slice(0, 8).map((h) => `<div class="hist-line"><span>${esc(prettyDay(h.date, { short: true }))}</span><span>${h.sets.map((s) => (num(s.w) ? `${s.w}x${s.r}` : s.r)).join(', ')}</span></div>`).join('') : '<p class="empty">No history yet.</p>')}
+    <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>
+  `, { cls: 'dialog', close: 'modal-close', ico: 'book' }));
+}
+
+// ================= PRs =================
+function openPRs() {
+  const best = {};
+  for (const w of doneWorkouts()) for (const e of w.ex) {
+    if (getEx(e.ex).type !== 'weight') continue;
+    for (const s of e.sets) {
+      const v = e1rm(s.w, s.r);
+      if (v && (!best[e.ex] || v > best[e.ex].e)) best[e.ex] = { e: v, w: s.w, r: s.r, date: w.date };
+    }
+  }
+  const rows = Object.entries(best).sort((a, b) => b[1].e - a[1].e).map(([id, b]) => `
+    <div class="row static"><span class="row-main"><span class="row-name">${esc(getEx(id).name)}</span><span class="row-sub">${b.w} x ${b.r} · ${esc(prettyDay(b.date, { short: true }))}</span></span><span class="row-num">${r0(b.e)}<small> max</small></span></div>`).join('');
+  openModal(() => win('Personal Records', `
+    <p class="muted small">Estimated 1-rep max from your best set (Epley formula). Big 3 for linemen: squat, bench, clean.</p>
+    <div class="list">${rows || '<p class="empty">Finish some workouts to see PRs.</p>'}</div>
+    <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>`, { cls: 'dialog', close: 'modal-close', ico: 'trophy' }));
+}
+
+// ================= Workout detail (history) =================
+function openWorkoutDetail(id) {
+  const w = S.workouts.find((x) => x.id === id);
+  if (!w) return;
+  openModal(() => win(esc(w.name), `
+    <p class="muted">${esc(prettyDay(w.date))} · ${fmtDuration(w.end - w.start)} · ${fmt(volume(w))} lb</p>
+    ${w.ex.map((e) => `<div class="hist-line"><span>${esc(getEx(e.ex).name)}</span><span>${e.sets.map((s) => (num(s.w) ? `${s.w}x${s.r}` : s.r)).join(', ')}</span></div>`).join('')}
+    ${w.notes ? `<p class="why">"${esc(w.notes)}"</p>` : ''}
+    <div class="btn-row">${btn('Delete', 'wd-del', { cls: 'danger', data: `data-id="${w.id}"` })}${btn('Close', 'modal-close', { cls: 'grow' })}</div>
+  `, { cls: 'dialog', close: 'modal-close', ico: 'dumbbell' }));
+}
+on({
+  'wd-del': async (el) => {
+    if (!(await confirmBox('Delete this workout from history?'))) return;
+    S.workouts = S.workouts.filter((w) => w.id !== el.dataset.id); save(); closeAllModals(); rerender();
+  },
+});
+
+// ================= Template editor =================
+let te = null;
+function openTplEditor(id) {
+  const t = S.templates.find((x) => x.id === id);
+  if (!t) return;
+  te = JSON.parse(JSON.stringify(t));
+  openModal(renderTplEditor, { full: true });
+}
+function renderTplEditor() {
+  return win('Edit Program Day', `
+    ${field('Name', `<input class="inp" id="te-name" value="${esc(te.name)}" data-change="te-name">`)}
+    <div class="te-list">
+      ${te.items.map((it, i) => `
+        <div class="te-row">
+          <span class="te-name">${esc(getEx(it.ex).name)}</span>
+          <input class="inp te-sets" type="number" inputmode="numeric" value="${it.sets}" data-change="te-val" data-i="${i}" data-k="sets" aria-label="Sets">
+          <span>x</span>
+          <input class="inp te-reps" type="text" value="${esc(it.reps)}" data-change="te-val" data-i="${i}" data-k="reps" aria-label="Reps">
+          <button class="btn sq" data-act="te-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${icon('up', 10)}</button>
+          <button class="btn sq" data-act="te-del" data-i="${i}" aria-label="Remove">${icon('close', 8)}</button>
+        </div>`).join('') || '<p class="empty">No exercises yet.</p>'}
+    </div>
+    <div class="btn-row">${btn('+ Add exercise', 'te-add', { cls: 'wide' })}</div>
+    <div class="btn-row">${btn('Save', 'te-save', { cls: 'primary grow' })}${btn('Delete day', 'te-remove', { cls: 'danger' })}${btn('Cancel', 'modal-close')}</div>
+  `, { cls: 'full-win', close: 'modal-close', ico: 'dumbbell' });
+}
+on({
+  'te-name': (el) => { te.name = el.value; },
+  'te-val': (el) => { const it = te.items[el.dataset.i]; it[el.dataset.k] = el.dataset.k === 'sets' ? Math.max(1, Math.min(20, num(el.value, 3))) : el.value; },
+  'te-up': (el) => { const i = Number(el.dataset.i); if (i > 0) [te.items[i - 1], te.items[i]] = [te.items[i], te.items[i - 1]]; drawModals(); },
+  'te-del': (el) => { te.items.splice(Number(el.dataset.i), 1); drawModals(); },
+  'te-add': () => openExPicker((id) => { te.items.push({ ex: id, sets: 3, reps: '8' }); closeModal(); drawModals(); }),
+  'te-save': () => {
+    const n = document.getElementById('te-name'); if (n) te.name = n.value.trim() || te.name;
+    S.templates = S.templates.map((t) => (t.id === te.id ? te : t));
+    save(); closeModal(); rerender(); toast('Program saved');
+  },
+  'te-remove': async () => {
+    if (!(await confirmBox(`Delete "${esc(te.name)}" from your program?`))) return;
+    S.templates = S.templates.filter((t) => t.id !== te.id); save(); closeAllModals(); rerender();
+  },
+});
+
+export function resetProgram() {
+  S.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+  save();
+}
+
+// ================= Plate calculator =================
+const pc = { w: 225, bar: 45 };
+const PLATE_CLS = { 45: 'p45', 35: 'p35', 25: 'p25', 10: 'p10', 5: 'p5', 2.5: 'p2' };
+function openPlates(w) {
+  pc.w = w || pc.w;
+  openModal(renderPlates);
+}
+function renderPlates() {
+  const { plates, leftover } = platesFor(pc.w, pc.bar);
+  const vis = plates.map((p) => `<span class="pl ${PLATE_CLS[p]}" title="${p}">${p}</span>`).join('');
+  return win('Plate Calculator', `
+    <div class="grid2">
+      ${field('Total weight (lb)', `<input class="inp" type="number" inputmode="decimal" value="${pc.w}" data-change="pc-w">`)}
+      ${field('Bar', select('bar', [['45', 'Barbell 45'], ['35', 'Light bar 35'], ['55', 'Trap bar 55'], ['60', 'Trap bar 60'], ['25', 'EZ bar 25']], pc.bar, { data: 'data-change="pc-bar"' }))}
+    </div>
+    <div class="chips">${[135, 185, 225, 275, 315, 365, 405].map((v) => `<button class="btn chip ${pc.w === v ? 'on' : ''}" data-act="pc-set" data-v="${v}">${v}</button>`).join('')}</div>
+    <div class="bar-vis sunken"><span class="sleeve"></span>${vis || '<span class="muted">just the bar</span>'}</div>
+    <p class="big-cal">Each side: <b class="vt">${plates.length ? plates.join(' + ') : '0'}</b></p>
+    ${leftover ? `<p class="muted small">Can't make exactly ${pc.w} - ${leftover} lb left over.</p>` : ''}
+    <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>
+  `, { cls: 'dialog', close: 'modal-close', ico: 'plate' });
+}
+on({
+  'pc-w': (el) => { pc.w = num(el.value, pc.w); drawModals(); },
+  'pc-bar': (el) => { pc.bar = num(el.value, 45); drawModals(); },
+  'pc-set': (el) => { pc.w = Number(el.dataset.v); drawModals(); },
+});
+
+// Clock tick for the workout screen
+export function tickWorkoutClock() {
+  const el = document.getElementById('wo-clock');
+  const w = activeWorkout();
+  if (el && w) el.textContent = fmtDuration(Date.now() - w.start);
+}
