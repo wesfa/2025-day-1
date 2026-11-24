@@ -8,7 +8,7 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.3.1';
+export const APP_VERSION = '1.3.2';
 
 export const THEMES = {
   island: 'Island',
@@ -312,7 +312,7 @@ async function doImport(text) {
   try {
     const r = importSchedule(data);
     closeModal(); schedChanged();
-    msgBox({ title: 'Schedule imported', ico: 'calendar', text: `<p>Loaded ${r.blocks} weekly block${r.blocks === 1 ? '' : 's'} and ${r.dates} date${r.dates === 1 ? '' : 's'}.</p><p class="muted small">Check "Next 7 days" to see where reminders land.</p>` });
+    msgBox({ title: 'Schedule imported', ico: 'calendar', text: `<p>Loaded ${r.blocks} weekly block${r.blocks === 1 ? '' : 's'} and ${r.dates} date${r.dates === 1 ? '' : 's'}${r.reminders ? `, and updated ${r.reminders} reminder${r.reminders === 1 ? '' : 's'}` : ''}.</p><p class="muted small">Check "Next 7 days" to see where reminders land.</p>` });
   } catch (e) {
     msgBox({ title: 'Import failed', text: 'That isn\'t a schedule file.' });
   }

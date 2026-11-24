@@ -33,8 +33,16 @@ function blocksFor(dow, rule) {
   let blocks = S.schedule.busy.filter((b) => b.days.includes(dow) && b.start && b.end);
   if (rule && rule.kind === 'away') blocks = [];
   else if (rule && rule.kind === 'off') blocks = blocks.filter((b) => blockKind(b) !== 'school');
-  else if (rule && rule.kind === 'early' && rule.end) {
-    blocks = blocks.map((b) => (blockKind(b) === 'school' && toMin(rule.end) < toMin(b.end) ? { ...b, end: rule.end } : b));
+  else if (rule && rule.kind === 'early') {
+    const isSchool = (b) => blockKind(b) === 'school';
+    if (Array.isArray(rule.school) && rule.school.length && blocks.some(isSchool)) {
+      // early-release bell schedule given in full (e.g. a shorter day with an earlier lunch)
+      blocks = [...blocks.filter((b) => !isSchool(b)), ...rule.school.map((x) => ({ label: 'School', kind: 'school', days: [dow], start: x.start, end: x.end }))];
+    } else if (rule.end) {
+      blocks = blocks
+        .filter((b) => !(isSchool(b) && toMin(b.start) >= toMin(rule.end)))
+        .map((b) => (isSchool(b) && toMin(rule.end) < toMin(b.end) ? { ...b, end: rule.end } : b));
+    }
   }
   return blocks;
 }
@@ -114,8 +122,9 @@ export function dayPlan(dow) { return planWith((r) => placeReminder(r, dow)); }
 export function planFor(key) { return planWith((r) => placeOn(r, key)); }
 
 // ---------- Importing a schedule file ----------
-// { type: 'macros-schedule', busy?: [...blocks], dates?: [...ranges], wake?, sleep? }
+// { type: 'macros-schedule', busy?: [...blocks], dates?: [...ranges], reminders?: [...changes], wake?, sleep? }
 // School blocks in the file replace your school blocks; work/other blocks you made stay.
+// Reminder entries update the matching reminder by id (time, days, label, message, on/off).
 export function importSchedule(data) {
   if (!data || data.type !== 'macros-schedule') throw new Error('Not a schedule file');
   const okTime = (t) => /^\d{2}:\d{2}$/.test(t || '');
@@ -123,6 +132,7 @@ export function importSchedule(data) {
   const sch = S.schedule;
   let blocks = 0;
   let dates = 0;
+  let reminders = 0;
   if (Array.isArray(data.busy) && data.busy.length) {
     const incoming = data.busy
       .filter((b) => okTime(b.start) && okTime(b.end) && Array.isArray(b.days))
@@ -136,17 +146,33 @@ export function importSchedule(data) {
     for (const d of data.dates) {
       if (!okDay(d.from) || !DATE_KINDS[d.kind]) continue;
       const item = { id: d.id || 'd' + uid(), label: String(d.label || DATE_KINDS[d.kind]), kind: d.kind, from: d.from, to: okDay(d.to) ? d.to : d.from };
-      if (d.kind === 'early') item.end = okTime(d.end) ? d.end : '13:25';
+      if (d.kind === 'early') {
+        item.end = okTime(d.end) ? d.end : '13:25';
+        const sch2 = Array.isArray(d.school) ? d.school.filter((x) => okTime(x.start) && okTime(x.end) && toMin(x.end) > toMin(x.start)) : [];
+        if (sch2.length) item.school = sch2.map((x) => ({ start: x.start, end: x.end }));
+      }
       const i = sch.dates.findIndex((x) => x.id === item.id);
       if (i >= 0) sch.dates[i] = item; else sch.dates.push(item);
       dates++;
     }
     sch.dates.sort((a, b) => (a.from < b.from ? -1 : 1));
   }
+  if (Array.isArray(data.reminders)) {
+    for (const c of data.reminders) {
+      const r = S.reminders.find((x) => x.id === c.id);
+      if (!r) continue;
+      if (okTime(c.time)) r.time = c.time;
+      if (Array.isArray(c.days) && c.days.length) r.days = c.days.map(Number).filter((n) => n >= 0 && n <= 6);
+      if (typeof c.label === 'string' && c.label.trim()) r.label = c.label.trim();
+      if (typeof c.msg === 'string' && c.msg.trim()) r.msg = c.msg.trim();
+      if (typeof c.on === 'boolean') r.on = c.on;
+      reminders++;
+    }
+  }
   if (okTime(data.wake)) sch.wake = data.wake;
   if (okTime(data.sleep)) sch.sleep = data.sleep;
   save(true);
-  return { blocks, dates };
+  return { blocks, dates, reminders };
 }
 
 // ---------- In-app: what's due right now ----------
