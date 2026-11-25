@@ -11,9 +11,10 @@ import { aiSettingsGroup } from './ai.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 export const THEMES = {
+  dusk: 'Dusk City',
   meadow: 'Meadow',
   island: 'Island',
   classic: 'Classic Teal',
@@ -24,7 +25,7 @@ export const THEMES = {
 };
 
 export function applyTheme() {
-  document.documentElement.dataset.theme = THEMES[S.settings.theme] ? S.settings.theme : 'meadow';
+  document.documentElement.dataset.theme = THEMES[S.settings.theme] ? S.settings.theme : 'dusk';
   const meta = document.querySelector('meta[name="theme-color"]');
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--desk').trim();
   if (meta && bg) meta.setAttribute('content', bg);

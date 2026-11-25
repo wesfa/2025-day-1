@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate Trenches' pixel art: home-screen icons and the Island scene pieces.
+"""Generate Macros' pixel art: home-screen icons (tools/key_icon.py), the Dusk wallpaper
+(tools/dusk_art.py), and the older Meadow and Island scene pieces.
 
 Run from the repo root:  python3 tools/make_art.py
 Needs Pillow. Every sprite is drawn as text, one character per pixel, from the
@@ -248,8 +249,8 @@ def meadow_icon(W, H, ox=0, oy=0):
     return img
 
 
-def save_icons():
-    out = os.path.join(ROOT, 'icons')
+def save_meadow_icons(out):
+    """The previous (Meadow) home-screen icon - kept for reference, no longer written by default."""
     base = meadow_icon(32, 32)
     big = meadow_icon(36, 36, 2, 2)   # extra 2px of scene on each side for the 180px size
     base.resize((192, 192), Image.NEAREST).save(os.path.join(out, 'icon-192.png'))
@@ -362,6 +363,11 @@ if __name__ == '__main__':
     for name, rows in [('PALM_ISLAND', PALM_ISLAND), ('CLOUD_BIG', CLOUD_BIG), ('CLOUD_MID', CLOUD_MID), ('CLOUD_SMALL', CLOUD_SMALL), ('CLOUD_HUGE', CLOUD_HUGE), ('CLOUD_WISP', CLOUD_WISP)]:
         bad = [i for i, r in enumerate(rows) if len(r) != len(rows[0])]
         assert not bad, f'{name}: rows {bad} have the wrong width'
-    save_icons()
+    import sys
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from key_icon import save_key_icons
+    from dusk_art import save_dusk
+    save_key_icons(os.path.join(ROOT, 'icons'))
     save_scene()
+    save_dusk(ROOT)
     print('art generated')

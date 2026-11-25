@@ -41,7 +41,7 @@ function suggestions(left) {
       .sort((a, b) => b.cal - a.cal);
     out.push(...picks.slice(0, 2));
   }
-  return out.slice(0, 4);
+  return out.slice(0, 2);
 }
 
 export function renderToday() {
@@ -93,6 +93,10 @@ export function renderToday() {
     ${backupDue ? `<div class="alert soft nudge">${icon('floppy', 16)}<span>Back up your data (it only lives on this phone).</span>${btn('Backup', 'backup-export')}<button class="btn sq" data-act="hide-backup" aria-label="Later">${icon('close', 8)}</button></div>` : ''}`;
 
   return `
+  <div class="today-hero">
+    <div class="th-hello">${hello}${name}</div>
+    <div class="th-date">${esc(longDate(new Date()))}${st ? ` <span class="th-streak">${icon('flame', 14)} ${st}-day streak</span>` : ''}</div>
+  </div>
   ${nudges}
   ${win(`${hello}${name}`, `
     <div class="today-top">
@@ -116,20 +120,20 @@ export function renderToday() {
       </div>
       ${bar(t.cal, tg.cal, { label: 'Calories' })}
     </div>
-    <div class="macros">
-      ${[['p', 'Protein', 'Builds muscle'], ['c', 'Carbs', 'Fuel for lifting'], ['f', 'Fat', 'Hormones + energy']].map(([m, l]) => `
+    <div class="mac-grid today-macs">
+      ${[['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([m, l]) => `
         <div class="macro">
-          <div class="macro-head"><b>${l}</b><span><b class="vt">${r0(t[m])}</b>/${tg[m]}g</span></div>
-          ${bar(t[m], tg[m], { cls: 'm-' + m, label: l })}
-          <div class="muted small">${left[m] > 0 ? `${r0(left[m])}g to go` : 'Hit it!'}</div>
+          <span class="mac-l">${l}</span>
+          ${bar(t[m], tg[m], { cls: 'thin m-' + m, label: l })}
+          <span class="mac-v"><b class="vt">${r0(t[m])}</b>/${tg[m]}g</span>
         </div>`).join('')}
     </div>
     ${microStrip(t, tg)}
-  `, { ico: 'calendar' })}
+  `, { ico: 'calendar', cls: 'today-main' })}
 
   ${win('Log Food', `
     ${btn('Snap a photo - AI logs it', 'ai-open', { cls: 'primary wide ai-cta', ico: 'camera', data: `data-meal="${mealForNow()}"` })}
-    <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}">${icon('burger', 16)}<span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
+    <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}"><span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
     ${sug.length ? `<div class="sub-head">Coach says: ${left.p > 20 ? `you need <b>${r0(left.p)}g protein</b>` : `<b>${fmt(left.cal)} kcal</b> left`}. Try:</div>
       <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · ${r0(f.p)}g P</small><b>+</b></button>`).join('')}</div>` : ''}
     ${left.cal < -300 && tg.dir < 0 ? '<p class="muted small">Over today. No stress - one day doesn\'t matter, the weekly average does.</p>' : ''}

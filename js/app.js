@@ -257,6 +257,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 setWizardDone((finished) => {
   if (finished) {
     go('#/today');
+    if (finished === 'restored') return;
     if (!isStandalone()) setTimeout(openInstallHelp, 400);
     else toast(`Let's go${S.profile.name ? ', ' + esc(S.profile.name) : ''}!`, 'palm');
     return;

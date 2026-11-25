@@ -456,10 +456,375 @@ const ART = {
   down: ['kkkkkkk', '.kkkkk.', '..kkk..', '...k...'],
 };
 
+// Dusk scheme: amber line glyphs, like the neon signs in the wallpaper. Anything not drawn here
+// (small arrows, close, etc.) reuses its normal shape in amber - see duskRows().
+const DPAL = {'a': '#ffa53c', 'A': '#ffd98e', 'm': '#b5601e', 'x': '#5a2c10'};
+const DUSK = {
+  calendar: [
+    '................',
+    '................',
+    '...a........a...',
+    '.aaaaaaaaaaaaaa.',
+    '.aAAAAAAAAAAAAa.',
+    '.aaaaaaaaaaaaaa.',
+    '.a............a.',
+    '.a.m..m..m..m.a.',
+    '.a............a.',
+    '.a.m..m..A..m.a.',
+    '.a............a.',
+    '.a.m..m..m....a.',
+    '.a............a.',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '................',
+  ],
+  burger: [
+    '................',
+    '................',
+    '................',
+    '.....aaaaaa.....',
+    '...aa......aa...',
+    '..a..m....m..a..',
+    '.a............a.',
+    '.aaaaaaaaaaaaaa.',
+    '..m.mm.mm.mm.m..',
+    '.AAAAAAAAAAAAAA.',
+    '.mmmmmmmmmmmmmm.',
+    '.aaaaaaaaaaaaaa.',
+    '.a............a.',
+    '..aaaaaaaaaaaa..',
+    '................',
+    '................',
+  ],
+  dumbbell: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '..a..........a..',
+    '.aaa........aaa.',
+    '.aAa........aAa.',
+    'aaAaaaaaaaaaaAaa',
+    'aaAammmmmmmmaAaa',
+    '.aAa........aAa.',
+    '.aaa........aaa.',
+    '..a..........a..',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  scale: [
+    '................',
+    '................',
+    '.aaaaaaaaaaaaaa.',
+    '.a............a.',
+    '.a..aaaaaaaa..a.',
+    '.a..aAA.AAAa..a.',
+    '.a..aaaaaaaa..a.',
+    '.a............a.',
+    '.a............a.',
+    '.a............a.',
+    '.a...m....m...a.',
+    '.a..mmm..mmm..a.',
+    '.a............a.',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '................',
+  ],
+  bell: [
+    '................',
+    '.......aa.......',
+    '......aAAa......',
+    '.....a....a.....',
+    '....a......a....',
+    '....a......a....',
+    '....a......a....',
+    '....a......a....',
+    '...a........a...',
+    '..a..........a..',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '......aAAa......',
+    '.......aa.......',
+    '................',
+    '................',
+  ],
+  gear: [
+    '................',
+    '.......aa.......',
+    '...a...aa...a...',
+    '..aaa.aaaa.aaa..',
+    '...aaa....aaa...',
+    '...aa......aa...',
+    '.aaa...mm...aaa.',
+    'aaa...m..m...aaa',
+    'aaa...m..m...aaa',
+    '.aaa...mm...aaa.',
+    '...aa......aa...',
+    '...aaa....aaa...',
+    '..aaa.aaaa.aaa..',
+    '...a...aa...a...',
+    '.......aa.......',
+    '................',
+  ],
+  trophy: [
+    '................',
+    '...aaaaaaaaaa...',
+    '.aaaAAAAAAAAaaa.',
+    'a..a........a..a',
+    'a..a...AA...a..a',
+    '.a.a........a.a.',
+    '..aa........aa..',
+    '....a......a....',
+    '.....a....a.....',
+    '......aaaa......',
+    '.......aa.......',
+    '.......aa.......',
+    '.....aaaaaa.....',
+    '....aAAAAAAa....',
+    '....aaaaaaaa....',
+    '................',
+  ],
+  warn: [
+    '................',
+    '.......aa.......',
+    '......a..a......',
+    '......a..a......',
+    '.....a....a.....',
+    '.....a.AA.a.....',
+    '....a..AA..a....',
+    '....a..AA..a....',
+    '...a...AA...a...',
+    '...a...AA...a...',
+    '..a..........a..',
+    '..a....AA....a..',
+    '.a............a.',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '................',
+  ],
+  check: [
+    '................',
+    '................',
+    '................',
+    '............aa..',
+    '...........aa...',
+    '..........aa....',
+    '.........aa.....',
+    '.aa.....aa......',
+    '..aa...aa.......',
+    '...aa.aa........',
+    '....aAa.........',
+    '.....a..........',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  floppy: [
+    '................',
+    '.aaaaaaaaaaaa...',
+    '.a..aaaaaa..a...',
+    '.a..a..mma..aa..',
+    '.a..a..mma...aa.',
+    '.a..aaaaaa....a.',
+    '.a............a.',
+    '.a..aaaaaaaa..a.',
+    '.a..aAAAAAAa..a.',
+    '.a..a......a..a.',
+    '.a..aAAAAAAa..a.',
+    '.a..a......a..a.',
+    '.a..a......a..a.',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '................',
+  ],
+  camera: [
+    '................',
+    '................',
+    '................',
+    '.....aaaa.......',
+    '.aaaaa..aaaaaaa.',
+    '.a............a.',
+    '.a....aaaa..A.a.',
+    '.a...a....a...a.',
+    '.a..a..AA..a..a.',
+    '.a..a.A..A.a..a.',
+    '.a..a..AA..a..a.',
+    '.a...a....a...a.',
+    '.a....aaaa....a.',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '................',
+  ],
+  hourglass: [
+    '................',
+    '..aaaaaaaaaaaa..',
+    '...a........a...',
+    '...a.AAAAAA.a...',
+    '....a.AAAA.a....',
+    '.....a.AA.a.....',
+    '......a..a......',
+    '.......aa.......',
+    '.......aa.......',
+    '......a..a......',
+    '.....a.mm.a.....',
+    '....a.mmmm.a....',
+    '...a.mmmmmm.a...',
+    '...a........a...',
+    '..aaaaaaaaaaaa..',
+    '................',
+  ],
+  book: [
+    '................',
+    '................',
+    '..aaaa....aaaa..',
+    '.a....aaaa....a.',
+    '.a.mmm.aa.mmm.a.',
+    '.a.....aa.....a.',
+    '.a.mmm.aa.mmm.a.',
+    '.a.....aa.....a.',
+    '.a.mm..aa.mmm.a.',
+    '.a.....aa.....a.',
+    '.a.mmm.aa.mm..a.',
+    '.aaaaa.aa.aaaaa.',
+    '......aAAa......',
+    '................',
+    '................',
+    '................',
+  ],
+  plate: [
+    '................',
+    '.....aaaaaa.....',
+    '...aa......aa...',
+    '..a..........a..',
+    '.a...mmmmmm...a.',
+    '.a..m......m..a.',
+    'a..m...aa...m..a',
+    'a..m..aAAa..m..a',
+    'a..m..aAAa..m..a',
+    'a..m...aa...m..a',
+    '.a..m......m..a.',
+    '.a...mmmmmm...a.',
+    '..a..........a..',
+    '...aa......aa...',
+    '.....aaaaaa.....',
+    '................',
+  ],
+  phone: [
+    '................',
+    '....aaaaaaaa....',
+    '....a......a....',
+    '....a.mmmm.a....',
+    '....a.mmmm.a....',
+    '....a.mmmm.a....',
+    '....a.mmmm.a....',
+    '....a.mmmm.a....',
+    '....a.mmmm.a....',
+    '....a.mmmm.a....',
+    '....a......a....',
+    '....a..AA..a....',
+    '....a......a....',
+    '....aaaaaaaa....',
+    '................',
+    '................',
+  ],
+  star: [
+    '................',
+    '.......aa.......',
+    '.......aa.......',
+    '......aAAa......',
+    '......aAAa......',
+    'aaaaaaaAAaaaaaaa',
+    '.aAAAAAAAAAAAAa.',
+    '..aAAAAAAAAAAa..',
+    '...aAAAAAAAAa...',
+    '....aAAAAAAa....',
+    '...aAAAaaAAAa...',
+    '...aAAa..aAAa...',
+    '..aAa......aAa..',
+    '..aa........aa..',
+    '................',
+    '................',
+  ],
+  starOff: [
+    '................',
+    '.......mm.......',
+    '.......mm.......',
+    '......m..m......',
+    '......m..m......',
+    'mmmmmmm..mmmmmmm',
+    '.m............m.',
+    '..m..........m..',
+    '...m........m...',
+    '....m......m....',
+    '...m...mm...m...',
+    '...m..m..m..m...',
+    '..m.m......m.m..',
+    '..mm........mm..',
+    '................',
+    '................',
+  ],
+  flame: [
+    '................',
+    '.......a........',
+    '......aa........',
+    '......a.a.......',
+    '.....a..a.......',
+    '.....a...a..a...',
+    '....a....a.aa...',
+    '...a......a.a...',
+    '...a..A.....a...',
+    '..a..AA......a..',
+    '..a..AAA.....a..',
+    '..a.AAAAA....a..',
+    '...a.AAAA...a...',
+    '....a.....aa....',
+    '.....aaaaa......',
+    '................',
+  ],
+  sun: [
+    '................',
+    '................',
+    '.....aaaaaa.....',
+    '...aaAAAAAAaa...',
+    '..aAAAAAAAAAAa..',
+    '.aAAAAAAAAAAAAa.',
+    '.aAAAAAAAAAAAAa.',
+    '................',
+    'aaaaaaaaaaaaaaaa',
+    '................',
+    '.mmmmmmmmmmmmmm.',
+    '................',
+    '...mmmmmmmmmm...',
+    '................',
+    '.....mmmmmm.....',
+    '................',
+  ],
+  blocks: [
+    '................',
+    '.aaaaaa..aaaaaa.',
+    '.aAAAAa..a....a.',
+    '.aAAAAa..a....a.',
+    '.aAAAAa..a....a.',
+    '.aAAAAa..a....a.',
+    '.aaaaaa..aaaaaa.',
+    '................',
+    '................',
+    '.aaaaaa..aaaaaa.',
+    '.a....a..ammmma.',
+    '.a....a..ammmma.',
+    '.a....a..ammmma.',
+    '.a....a..ammmma.',
+    '.aaaaaa..aaaaaa.',
+    '................',
+  ],
+};
+
 const cache = {};
 
-function toSvg(name) {
-  const rows = ART[name];
+function toSvg(rows, pal) {
   if (!rows) return '';
   const h = rows.length;
   const w = rows[0].length;
@@ -468,27 +833,46 @@ function toSvg(name) {
     let x = 0;
     while (x < w) {
       const ch = row[x];
-      if (ch === '.' || !PAL[ch]) { x++; continue; }
+      if (ch === '.' || !pal[ch]) { x++; continue; }
       let run = 1;
       while (x + run < w && row[x + run] === ch) run++;
-      rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${PAL[ch]}"/>`;
+      rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${pal[ch]}"/>`;
       x += run;
     }
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
 }
 
-// icon('burger') -> inline SVG string. size in CSS px (defaults to 2x pixel scale)
-export function icon(name, size) {
-  if (!cache[name]) cache[name] = toSvg(name);
-  const svg = cache[name];
+// Icons without a Dusk drawing keep their shape: dark outlines become amber lines, fills map by brightness.
+function lum(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.3 * (n >> 16) + 0.59 * ((n >> 8) & 255) + 0.11 * (n & 255)) / 255;
+}
+function duskRows(name) {
+  if (DUSK[name]) return DUSK[name];
   const rows = ART[name];
+  if (!rows) return null;
+  return rows.map((r) => r.replace(/[^.]/g, (ch) => {
+    if (!PAL[ch]) return '.';
+    const l = lum(PAL[ch]);
+    return l < 0.2 ? 'a' : l > 0.8 ? 'A' : l > 0.45 ? 'a' : 'm';
+  }));
+}
+const isDusk = () => typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dusk';
+
+// icon('burger') -> inline SVG string. size in CSS px (defaults to 2x pixel scale).
+// Picks the amber glyph set while the Dusk scheme is on.
+export function icon(name, size) {
+  const dusk = isDusk();
+  const rows = dusk ? duskRows(name) : ART[name];
   if (!rows) return '';
+  const key = (dusk ? 'd:' : '') + name;
+  if (!cache[key]) cache[key] = toSvg(rows, dusk ? DPAL : PAL);
   const scale = size ? size / rows[0].length : 2;
   const w = rows[0].length * scale;
   const h = rows.length * scale;
-  return svg.replace(/width="\d+" height="\d+"/, `width="${w}" height="${h}" class="px-ico"`);
+  return cache[key].replace(/width="\d+" height="\d+"/, `width="${w}" height="${h}" class="px-ico"`);
 }
 
 export const ICON_NAMES = Object.keys(ART);
-export { ART, PAL };
+export { ART, PAL, DUSK, DPAL };

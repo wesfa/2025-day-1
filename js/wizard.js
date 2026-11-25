@@ -1,8 +1,9 @@
 // First-run "Setup Wizard" in classic installer style.
-import { S, save } from './store.js';
+import { S, save, mergeInto, normalize } from './store.js';
 import { calcTargets, PHASES } from './calc.js';
 import { dayKey, esc, num } from './util.js';
-import { field, numInput, select, dayPicker, on, formData, toast } from './ui.js';
+import { field, numInput, select, dayPicker, on, formData, toast, msgBox } from './ui.js';
+import { applyTheme } from './settings.js';
 import { icon } from './icons.js';
 
 let step = 0;
@@ -28,7 +29,12 @@ function page() {
         <li>${icon('scale', 16)} Daily weigh-in and goal-weight tracking</li>
         <li>${icon('bell', 16)} Reminders that skip school and work</li>
       </ul>
-      <p>Click <b>Next</b> to continue.</p>`;
+      <p>Click <b>Next</b> to continue.</p>
+      <div class="wz-restore">
+        <p class="muted small">Moving from another copy of Macros (like a new home-screen icon)? Restore your backup file to bring back everything and skip setup.</p>
+        <button class="btn" data-act="wz-restore">${icon('floppy', 16)}<span>Restore from a backup</span></button>
+        <input type="file" id="wz-file" accept=".json,application/json,text/plain" hidden data-change="wz-file">
+      </div>`;
     case 1: return `
       <h2>About you</h2>
       <form id="wz" onsubmit="return false">
@@ -142,6 +148,32 @@ on({
     onDone(true);
   },
   'wz-back': () => { collect(); if (step > 0) step--; onDone(false); },
+  'wz-restore': () => document.getElementById('wz-file').click(),
+  // A fresh copy hasn't been set up yet, so merging brings over the profile, schedule, reminders and
+  // settings as well as the food log, weigh-ins and workouts.
+  'wz-file': async (el) => {
+    const file = el.files && el.files[0];
+    if (!file) return;
+    el.value = '';
+    let n;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || !data.profile || !data.days) throw new Error('not a backup');
+      n = mergeInto(S, normalize(data));
+      if (!S.setupDone) throw new Error('backup was never set up');
+    } catch (e) {
+      msgBox({ title: 'Restore failed', text: "That file isn't a Macros backup. On the old copy, use Control Panel > Export backup." });
+      return;
+    }
+    save(true);
+    applyTheme();
+    step = 0;
+    onDone('restored');
+    setTimeout(() => msgBox({
+      title: 'Backup restored', ico: 'check',
+      text: `<p>Welcome back${S.profile.name ? ', ' + esc(S.profile.name) : ''}. Restored ${n.food} food entries, ${n.weights} weigh-ins and ${n.workouts} workouts, plus your profile, schedule, reminders and settings.</p>`,
+    }), 300);
+  },
 });
 
 

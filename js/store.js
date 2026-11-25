@@ -60,7 +60,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'meadow', themeV: 3, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true },
   };
 }
 
@@ -103,6 +103,11 @@ function migrate(s) {
   if (s.settings && s.settings.themeV < 3) {
     if (!s.settings.theme || s.settings.theme === 'island') s.settings.theme = 'meadow';
     s.settings.themeV = 3;
+  }
+  // v1.9: Dusk City became the default. Anyone still on the previous default (Meadow) moves over once.
+  if (s.settings && s.settings.themeV < 4) {
+    if (!s.settings.theme || s.settings.theme === 'meadow') s.settings.theme = 'dusk';
+    s.settings.themeV = 4;
   }
   // v1.3.1: add the nightly reading reminder once (if it's later deleted, it stays deleted)
   if (s.settings && Array.isArray(s.reminders) && !s.settings.readAdded) {
