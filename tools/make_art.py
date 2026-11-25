@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate Macros' pixel art: home-screen icons (tools/key_icon.py), the Dusk wallpaper
-(tools/dusk_art.py), and the older Meadow and Island scene pieces.
+(tools/city_art.py, four times of day plus sun, moon, clouds and weather), and the older Meadow and
+Island scene pieces.
 
 Run from the repo root:  python3 tools/make_art.py
 Needs Pillow. Every sprite is drawn as text, one character per pixel, from the
@@ -366,8 +367,8 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from key_icon import save_key_icons
-    from dusk_art import save_dusk
+    from city_art import save_city
     save_key_icons(os.path.join(ROOT, 'icons'))
     save_scene()
-    save_dusk(ROOT)
+    save_city(ROOT)
     print('art generated')

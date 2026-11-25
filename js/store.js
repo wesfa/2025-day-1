@@ -60,7 +60,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true, sky: { weather: true }, loc: null },
   };
 }
 

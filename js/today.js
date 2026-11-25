@@ -88,7 +88,9 @@ export function renderToday() {
   const DAY = 86400000;
   const showInstall = !isStandalone() && !(S.settings.hideInstallUntil > Date.now());
   const backupDue = Date.now() - (S.settings.lastBackup || S.created || Date.now()) > 14 * DAY && !(S.settings.hideBackupUntil > Date.now());
+  const showSky = S.settings.theme === 'dusk' && !S.settings.loc && !(S.settings.hideSkyUntil > Date.now());
   const nudges = `
+    ${showSky ? `<div class="alert soft nudge">${icon('sun', 16)}<span>Show the real sky and weather where you live?</span>${btn('Use my location', 'sky-gps')}<button class="btn sq" data-act="hide-sky" aria-label="Not now">${icon('close', 8)}</button></div>` : ''}
     ${showInstall ? `<div class="alert soft nudge">${icon('phone', 16)}<span>Put Macros on your home screen for full-screen + offline.</span>${btn('How', 'install-help')}<button class="btn sq" data-act="hide-install" aria-label="Dismiss">${icon('close', 8)}</button></div>` : ''}
     ${backupDue ? `<div class="alert soft nudge">${icon('floppy', 16)}<span>Back up your data (it only lives on this phone).</span>${btn('Backup', 'backup-export')}<button class="btn sq" data-act="hide-backup" aria-label="Later">${icon('close', 8)}</button></div>` : ''}`;
 
@@ -151,6 +153,7 @@ on({
     if (logWeight(dayKey(), v)) { toast(`Logged ${r1(Number(v))} lb`, 'scale'); rerender(); }
   },
   'hide-install': () => { S.settings.hideInstallUntil = Date.now() + 3 * 86400000; save(); rerender(); },
+  'hide-sky': () => { S.settings.hideSkyUntil = Date.now() + 30 * 86400000; save(); rerender(); },
   'hide-backup': () => { S.settings.hideBackupUntil = Date.now() + 7 * 86400000; save(); rerender(); },
   'day-set': (el) => {
     const d = day(dayKey());

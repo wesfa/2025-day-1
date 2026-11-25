@@ -4,17 +4,18 @@ import { listSnapshots } from './vault.js';
 import { calcTargets, microTargets, PHASES } from './calc.js';
 import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText } from './reminders.js';
 import { dayKey, addDays, parseDay, prettyDay, shortDate, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid, isStandalone, toMin } from './util.js';
-import { win, group, btn, field, numInput, select, dayPicker, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, formData } from './ui.js';
+import { win, group, btn, field, numInput, select, dayPicker, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, promptBox, formData } from './ui.js';
 import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
+import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLocation, searchPlaces, setLocation, forgetLocation, getPreview, setPreview, TIME_PREVIEWS, WEATHER_PREVIEWS, WEATHER_LABEL } from './sky.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.9.0';
+export const APP_VERSION = '1.10.0';
 
 export const THEMES = {
-  dusk: 'Dusk City',
+  dusk: 'City (live sky)',
   meadow: 'Meadow',
   island: 'Island',
   classic: 'Classic Teal',
@@ -29,6 +30,31 @@ export function applyTheme() {
   const meta = document.querySelector('meta[name="theme-color"]');
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--desk').trim();
   if (meta && bg) meta.setAttribute('content', bg);
+  setSkyActive(document.documentElement.dataset.theme === 'dusk');  // the City scheme follows the real sky
+}
+
+// The City scheme's wallpaper follows the real sun and weather; this group sets where "here" is.
+function liveSkyGroup() {
+  const st = skyState();
+  const loc = S.settings.loc;
+  const sk = skySettings();
+  const pv = getPreview();
+  const tm = (ms) => { const d = new Date(ms); return fmtTime(`${d.getHours()}:${d.getMinutes()}`); };
+  const wx = st.real ? `${WEATHER_LABEL[st.real.kind]}${st.temp != null ? `, ${Math.round(st.temp)}°F` : ''}` : loc && sk.weather !== false ? 'weather loading...' : 'weather off';
+  return `
+    ${S.settings.theme === 'dusk' ? '' : '<p class="muted small">This is for the <b>City (live sky)</b> color scheme above.</p>'}
+    <div class="sky-now panel">
+      <b>${esc(skyLabel(st))}</b>${st.preview ? ' <span class="tag">preview</span>' : ''} <span class="muted">· ${esc(wx)}</span>
+      <div class="muted small">Sunrise ${tm(st.sun.rise)} · Sunset ${tm(st.sun.set)}${st.sun.src === 'guess' ? ' (a guess from your time zone)' : ''}</div>
+    </div>
+    <p class="small">${loc ? `Location: <b>${esc(loc.name || 'your location')}</b> <span class="muted">(rounded to about 10 km)</span>` : 'No location yet, so the weather is off and sunrise and sunset are guessed.'}</p>
+    <div class="btn-row">${btn('Use my location', 'sky-gps', { ico: 'sun' })}${btn('Find my town', 'sky-find')}${loc ? btn('Forget', 'sky-forget') : ''}</div>
+    <label class="check"><input type="checkbox" data-change="sky-weather" ${sk.weather !== false ? 'checked' : ''}><span>Show the live weather (clouds, rain, snow, fog, storms)</span></label>
+    <div class="grid2">
+      ${field('Preview time', select('skyTime', TIME_PREVIEWS, pv.time, { data: 'data-change="sky-preview"' }))}
+      ${field('Preview weather', select('skyWeather', WEATHER_PREVIEWS, pv.weather, { data: 'data-change="sky-preview"' }))}
+    </div>
+    <p class="muted small">Previews go back to live when you close the app. Weather comes from Open-Meteo (free, no account). Only your location, rounded to about 10 km, is sent - nothing about your food, weight or workouts.</p>`;
 }
 
 const heightOpts = () => {
@@ -107,6 +133,8 @@ export function renderSettings() {
       <label class="check"><input type="checkbox" data-change="set-sound" ${S.settings.sound ? 'checked' : ''}><span>Beep when rest timer ends</span></label>
       <label class="check"><input type="checkbox" data-change="set-restauto" ${S.settings.restAuto ? 'checked' : ''}><span>Start rest timer when I check off a set</span></label>`)}
 
+    ${group('Live sky', liveSkyGroup())}
+
     ${group('Backup', `
       <p class="muted small">Your data lives only on this phone. Export a backup now and then (save it to Files / Drive) so you never lose your history.${backupAge != null ? ` Last backup: ${backupAge === 0 ? 'today' : backupAge + ' days ago'}.` : ' No backup yet.'}</p>
       <div class="btn-row">${btn('Export backup', 'backup-export', { ico: 'floppy' })}${btn('Import backup', 'backup-import')}</div>
@@ -160,6 +188,38 @@ on({
     save(); rerender();
   },
   'set-restauto': (el) => { S.settings.restAuto = el.checked; save(); },
+  'sky-gps': async () => {
+    toast('Finding your location...', 'sun');
+    try {
+      await useMyLocation();
+      toast('Live sky set to where you are', 'sun');
+    } catch (e) {
+      msgBox({ title: 'Location', text: `<p>${esc(e.message)}</p>` });
+    }
+    rerender();
+  },
+  'sky-find': async () => {
+    const q = await promptBox({ title: 'Find my town', label: 'Town or city', placeholder: 'Town name' });
+    if (!q || !q.trim()) return;
+    let list;
+    try { list = await searchPlaces(q.trim()); } catch (e) {
+      msgBox({ title: 'Find my town', text: '<p>Couldn\'t search right now. Check your connection and try again.</p>' });
+      return;
+    }
+    if (!list.length) { msgBox({ title: 'Find my town', text: `<p>No places found for "${esc(q.trim())}". Try just the town name.</p>` }); return; }
+    const pick = await msgBox({ title: 'Which one?', ico: 'sun', text: '<p>Pick your town:</p>', buttons: [...list.slice(0, 4).map((p, i) => [esc(p.name), String(i)]), ['Cancel', false]] });
+    if (pick === false || pick == null || !list[Number(pick)]) return;
+    const p = list[Number(pick)];
+    await setLocation(p.lat, p.lon, p.name, 'search');
+    toast(`Live sky: ${p.name}`, 'sun');
+    rerender();
+  },
+  'sky-forget': () => { forgetLocation(); toast('Location forgotten'); rerender(); },
+  'sky-weather': (el) => { skySettings().weather = el.checked; save(true); refreshWeather(true).finally(() => { setSkyActive(S.settings.theme === 'dusk'); rerender(); }); },
+  'sky-preview': () => {
+    setPreview({ time: document.querySelector('select[name="skyTime"]').value, weather: document.querySelector('select[name="skyWeather"]').value });
+    rerender();
+  },
   'backup-export': async () => {
     S.settings.lastBackup = Date.now(); save(true);
     const ok = await saveFile(`macros-backup-${dayKey()}.json`, JSON.stringify(S, null, 1));
