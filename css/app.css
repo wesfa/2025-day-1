@@ -188,8 +188,9 @@ code { font-family: 'VT323', monospace; font-size: 19px; }
 }
 .btn:active:not(:disabled), .btn.pressed {
   box-shadow: inset 2px 2px 0 var(--dk), inset -2px -2px 0 var(--hi), inset 4px 4px 0 var(--lo), inset -4px -4px 0 var(--light);
-  padding: 9px 13px 7px 15px;
 }
+/* the Win9x "pushed in" look moves what's inside by 1px - never the padding, so nothing changes size or jumps */
+.btn:active:not(:disabled) > *, .btn.pressed > * { transform: translate(1px, 1px); }
 .btn.primary { outline: 2px solid var(--dk); outline-offset: -2px; font-weight: 700;
   box-shadow: inset -4px -4px 0 var(--dk), inset 4px 4px 0 var(--hi), inset -6px -6px 0 var(--lo), inset 6px 6px 0 var(--light); }
 [data-theme="night"] .btn.primary { outline-color: var(--accent); }
@@ -764,8 +765,9 @@ html[data-theme="meadow"] { background: #1e56d6; }
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 [data-theme="meadow"] .btn:active:not(:disabled), [data-theme="meadow"] .btn.pressed {
-  background: linear-gradient(180deg, #d9d7cc, #eeede6); box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.25); padding: 8px 14px;
+  background: linear-gradient(180deg, #d9d7cc, #eeede6); box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.25);
 }
+[data-theme="meadow"] .btn:active > *, [data-theme="meadow"] .btn.pressed > * { transform: none; }
 [data-theme="meadow"] .btn.primary { outline: 0; box-shadow: inset 0 0 0 2px #95b8f3; }
 [data-theme="meadow"] .btn.on { background: linear-gradient(180deg, #dcdacf, #f0efe9); box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.25); }
 [data-theme="meadow"] .btn:disabled { border-color: #c4c1b3; color: #aca899; text-shadow: none; }
@@ -965,7 +967,8 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 
 /* buttons + fields */
 [data-theme="dusk"] .btn { background: rgba(255, 165, 60, 0.07); color: var(--text); border: 1px solid var(--line); }
-[data-theme="dusk"] .btn:active:not(:disabled), [data-theme="dusk"] .btn.pressed { background: rgba(255, 165, 60, 0.2); padding: 8px 14px; box-shadow: none; }
+[data-theme="dusk"] .btn:active:not(:disabled), [data-theme="dusk"] .btn.pressed { background: rgba(255, 165, 60, 0.2); box-shadow: none; }
+[data-theme="dusk"] .btn:active > *, [data-theme="dusk"] .btn.pressed > * { transform: none; }
 [data-theme="dusk"] .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); outline: 0; box-shadow: 0 0 12px rgba(255, 140, 40, 0.32); }
 [data-theme="dusk"] .btn.primary .px-ico { filter: brightness(0.15); }
 [data-theme="dusk"] .btn.primary:active:not(:disabled) { background: #ffbd6a; }
@@ -1041,6 +1044,10 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 [data-theme="dusk"] .task { background: none; border: 0; color: var(--muted); font-size: 11px; letter-spacing: 0.5px; }
 [data-theme="dusk"] .task.on { background: none; color: var(--accent); box-shadow: inset 0 2px 0 var(--accent); font-weight: 400; }
 [data-theme="dusk"] .task:not(.on) .px-ico { opacity: 0.7; filter: none; }
+/* pressing a taskbar tab just lights it up - no box */
+[data-theme="dusk"] .task:active:not(:disabled) { background: none; color: var(--accent); }
+[data-theme="dusk"] .task:active .px-ico { opacity: 1; }
+[data-theme="dusk"] .task.on:active:not(:disabled) { box-shadow: inset 0 2px 0 var(--accent); }
 [data-theme="dusk"] .tray { background: none; color: var(--accent); border-left: 1px solid var(--line-soft); font-size: 18px; }
 [data-theme="dusk"] .startmenu { background: rgba(20, 13, 9, 0.97); border: 1px solid var(--line); padding: 0; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6); }
 [data-theme="dusk"] .sm-side { background: linear-gradient(0deg, #2a160b, #6d3a17); }
