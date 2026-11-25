@@ -32,13 +32,15 @@ function colorFor(ch, vol) {
   return m ? HEAT[heatOf(vol[m] || 0)].color : SKIN;
 }
 
-// Outline pixels, seam letters (lowercase) and places where two different muscles meet are drawn light
+// Outline pixels, seam letters (lowercase) and places where two different muscles meet are drawn light.
+// The side check looks toward the centre column, so the left and right halves stay mirror images.
+const MID = (BODY_W - 1) / 2;
 function isLine(at, x, y) {
   const ch = at(x, y);
   if (ch !== ch.toUpperCase()) return true;
   if ([at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes('.')) return true;
   const other = (n) => n !== '.' && n.toUpperCase() !== ch && !'HXP'.includes(n.toUpperCase());
-  return other(at(x + 1, y)) || other(at(x, y + 1));
+  return other(x <= MID ? at(x + 1, y) : at(x - 1, y)) || other(at(x, y + 1));
 }
 
 // One body as SVG: runs of same-coloured pixels become one rect
