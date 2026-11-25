@@ -1,6 +1,6 @@
 // Service worker: makes Macros work offline and lets updates roll out.
 // Bump VERSION on every deploy so phones pick up the new files.
-const VERSION = '1.14.1';
+const VERSION = '1.15.0';
 const CACHE = 'macros-' + VERSION;
 
 const ASSETS = [
@@ -30,6 +30,7 @@ const ASSETS = [
   './js/settings.js',
   './js/sleep.js',
   './js/sky.js',
+  './js/smartlist.js',
   './js/store.js',
   './js/strength.js',
   './js/today.js',

@@ -72,9 +72,10 @@ function defaults() {
     reminders: DEFAULT_REMINDERS(),
     sleep: { goal: 9, log: {}, bedAt: 0 },   // log is keyed by the morning you woke up: { bed, wake, q }
     measure: {},                             // body measurements by day: { waist, chest, arm, thigh, neck } in inches
-    grocery: [],                             // { id, name, qty, aisle, done }
+    grocery: [],                             // your own extras: { id, name, qty, aisle, done }
+    grocerySmart: null,                      // this week's smart list: { built, items: [{ id, qty, why }], focus, got }
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true, haptics: true, sky: { weather: true }, loc: null, sleepRem: true, coach: true, trainGoal: 'muscle' },
+    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true, haptics: true, sky: { weather: true }, loc: null, sleepRem: true, coach: true, trainGoal: 'muscle', groceryStore: 'wegmans' },
   };
 }
 

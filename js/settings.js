@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.14.1';
+export const APP_VERSION = '1.15.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',

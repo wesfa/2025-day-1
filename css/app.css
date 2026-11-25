@@ -1109,6 +1109,15 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 .gr-row.done .row-name { text-decoration: line-through; color: var(--muted); }
 .fd-btns { display: flex; gap: 6px; }
 
+.sg-stores { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.sg-stores .chips { margin: 0; }
+.sg-row { gap: 10px; align-items: flex-start; }
+.sg-row .check { margin-top: 2px; }
+.sg-row .row-name { white-space: normal; line-height: 1.25; }
+.sg-row .sg-qty { color: var(--accent); font-weight: 400; }
+.sg-row .sg-alt { opacity: 0.8; font-size: 12px; }
+.sg-row.done .row-name { text-decoration: line-through; color: var(--muted); }
+
 /* ---- fast food ---- */
 .ff-chains .btn.chip { font-size: 14px; min-height: 34px; padding: 3px 10px; }
 .ff-left { padding: 8px 10px; font-size: 15px; margin: 6px 0; }

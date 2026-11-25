@@ -1,7 +1,8 @@
 // Grocery list: what to buy, grouped by aisle. Add items by hand, from the foods you eat most ("my staples"),
 // or from any food's detail screen. Check things off in the store; share the list as text.
 import { S, save, getFood } from './store.js';
-import { dayKey, addDays, esc, uid, buzz, HAPTIC } from './util.js';
+import { dayKey, addDays, daysBetween, prettyDay, esc, uid, r0, r1, fmt, buzz, HAPTIC } from './util.js';
+import { buildList, weekReview, descFor, CAT_BY_ID, SECTIONS, STORES, NEED_LABEL } from './smartlist.js';
 import { win, group, btn, field, select, on, rerender, toast, confirmBox, openModal, closeModal, formData } from './ui.js';
 import { icon } from './icons.js';
 
@@ -70,10 +71,63 @@ export function staples(days = 14) {
 const perWeek = (x, days = 14) => Math.max(1, Math.round((x.servings * 7) / days));
 
 // ================= Screen =================
+// Top: what your last 7 days looked like. Then this week's smart list (tap to copy, check off in the store).
+// Bottom: your own extras (typed in, from "my staples", or the cart button on a food).
+const pct = (a, b) => (b > 0 ? a / b : 0);
+function reviewRows(rv) {
+  const a = rv.avg; const g = rv.goal;
+  const lvl = (good, ok) => (good ? 'good' : ok ? 'ok' : 'bad');
+  const rows = [
+    ['Protein', `${r0(a.p)} / ${r0(g.p)} g a day`, lvl(pct(a.p, g.p) >= 0.9, pct(a.p, g.p) >= 0.75)],
+    ['Calories', `${fmt(a.cal)} / ${fmt(g.cal)} a day`, lvl(Math.abs(pct(a.cal, g.cal) - 1) <= 0.1, Math.abs(pct(a.cal, g.cal) - 1) <= 0.2)],
+    ['Sodium', `${fmt(a.na)} mg a day (max ${fmt(g.na)})`, lvl(a.na <= g.na, a.na <= g.na * 1.25)],
+    ['Fiber', `${r0(a.fib)} / ${r0(g.fib)} g a day`, lvl(pct(a.fib, g.fib) >= 0.8, pct(a.fib, g.fib) >= 0.6)],
+    ['Potassium', `${fmt(a.pot)} / ${fmt(g.pot)} mg a day`, lvl(pct(a.pot, g.pot) >= 0.8, pct(a.pot, g.pot) >= 0.6)],
+    ['Fruit & veg', `${r1(rv.produce)} servings a day (aim for 4+)`, lvl(rv.produce >= 4, rv.produce >= 2)],
+    ['Fast food & snacks', `${r0(rv.junkShare * 100)}% of calories`, lvl(rv.junkShare <= 0.15, rv.junkShare <= 0.3)],
+  ];
+  return `<ul class="bq-list">${rows.map(([l, v, c]) => `<li class="bq-${c}"><span class="bq-dot"></span><b>${l}</b> ${esc(v)}</li>`).join('')}</ul>`;
+}
+
+function currentPlan() {
+  let plan = S.grocerySmart;
+  if (!plan || !Array.isArray(plan.items) || !plan.items.length || !plan.built || daysBetween(plan.built, dayKey()) >= 7) {
+    plan = S.grocerySmart = buildList();
+    save();
+  }
+  plan.got = plan.got || {};
+  return plan;
+}
+const storeOf = () => (STORES.some(([k]) => k === S.settings.groceryStore) ? S.settings.groceryStore : 'wegmans');
+const storeName = (k) => (STORES.find(([x]) => x === k) || STORES[0])[1];
+
 export function renderGrocery() {
+  const store = storeOf();
+  const plan = currentPlan();
+  const rv = weekReview();
   const items = S.grocery || [];
   const todo = items.filter((g) => !g.done);
   const got = items.filter((g) => g.done);
+
+  const sgRow = (x) => {
+    const it = CAT_BY_ID[x.id]; if (!it) return '';
+    const done = !!plan.got[x.id];
+    return `<div class="row static sg-row ${done ? 'done' : ''}">
+      <label class="check inline"><input type="checkbox" data-change="sg-got" data-id="${x.id}" ${done ? 'checked' : ''}><span class="sr">In the cart</span></label>
+      <button class="row-main link-row" data-act="sg-copy" data-id="${x.id}" aria-label="Copy ${esc(descFor(it, store))}">
+        <span class="row-name">${esc(descFor(it, store))}</span>
+        <span class="row-sub"><b class="sg-qty">${esc(x.qty)}</b>${x.why ? ` · ${esc(x.why)}` : ''}</span>
+        ${store === 'wegmans' && it.a && it.a !== it.w ? `<span class="row-sub sg-alt">Aldi: ${esc(it.a)}</span>` : ''}
+      </button>
+      <button class="btn sq" data-act="sg-hide" data-id="${x.id}" aria-label="Take off the list">${icon('close', 8)}</button>
+    </div>`;
+  };
+  const smart = SECTIONS.map((sec) => {
+    const list = plan.items.filter((x) => CAT_BY_ID[x.id] && CAT_BY_ID[x.id].sec === sec);
+    return list.length ? `<div class="sub-head">${esc(sec)}</div>${list.map(sgRow).join('')}` : '';
+  }).join('');
+  const left = plan.items.filter((x) => !plan.got[x.id]).length;
+
   const row = (g) => `
     <div class="row static gr-row ${g.done ? 'done' : ''}">
       <label class="check inline"><input type="checkbox" data-change="gr-toggle" data-id="${g.id}" ${g.done ? 'checked' : ''}><span class="sr">Got it</span></label>
@@ -84,15 +138,27 @@ export function renderGrocery() {
     const list = todo.filter((g) => (g.aisle || 'Other') === a);
     return list.length ? `<div class="sub-head">${esc(a)}</div>${list.map(row).join('')}` : '';
   }).join('');
+
   return win('Grocery List', `
-    <form class="search-row" onsubmit="return false">
-      <input id="gr-new" class="inp grow" placeholder="Add an item (e.g. eggs)" autocomplete="off" enterkeyhint="done">
-      ${btn('Add', 'gr-add', { cls: 'primary', type: 'submit' })}
-    </form>
-    <div class="btn-row">${btn('Add my staples', 'gr-staples', { ico: 'star' })}${items.length ? btn('Share list', 'gr-share', { ico: 'phone' }) : ''}</div>
-    ${todo.length ? `<div class="list">${byAisle}</div>` : `<p class="empty">${got.length ? 'Everything\'s in the cart.' : 'Your list is empty. <b>Add my staples</b> fills it from the foods you eat most.'}</p>`}
-    ${got.length ? group(`In the cart (${got.length})`, `${got.map(row).join('')}<div class="btn-row">${btn('Clear the cart', 'gr-clear')}</div>`) : ''}
-    <p class="muted small">Tip: on any food's detail screen, the cart button adds it here.</p>
+    <div class="sg-stores"><span class="muted small">Shopping at</span>
+      <div class="chips">${STORES.map(([k, l], i) => `<button class="btn chip ${k === store ? 'on' : ''}" data-act="sg-store" data-s="${k}">${k === 'any' ? l : `${i + 1}. ${l}`}</button>`).join('')}</div>
+    </div>
+    ${group('Your last 7 days', rv.days < 3
+      ? '<p class="muted small">Log food for a few days and this list adapts to what you\'re missing. For now it\'s a balanced list for a lifting athlete.</p>'
+      : `${reviewRows(rv)}${plan.focus && plan.focus.length ? `<p class="bq-advice">${icon('up', 10)} This week's list leans on ${esc(plan.focus.map((k) => NEED_LABEL[k]).join(', '))}.</p>` : '<p class="ok-line">' + icon('check', 16) + ' Eating well - this is a balanced restock.</p>'}`)}
+    ${group(`This week's list${left ? ` (${left} to get)` : ''}`, `
+      <p class="muted small">Tap an item to copy it. Check it off when it's in the cart.</p>
+      <div class="list">${smart}</div>
+      <div class="btn-row">${btn('Copy list', 'sg-copy-all', { cls: 'primary grow' })}${btn('Share', 'gr-share')}${btn('Rebuild', 'sg-rebuild')}</div>
+      <p class="muted small">Built ${esc(prettyDay(plan.built))} from your log. Rebuild after a few more days of logging.</p>`)}
+    ${group('My extras', `
+      <form class="search-row" onsubmit="return false">
+        <input id="gr-new" class="inp grow" placeholder="Add anything else" autocomplete="off" enterkeyhint="done">
+        ${btn('Add', 'gr-add', { cls: 'primary', type: 'submit' })}
+      </form>
+      ${todo.length ? `<div class="list">${byAisle}</div>` : '<p class="empty">Nothing extra yet. The cart button on any food adds it here.</p>'}
+      ${got.length ? `<div class="sub-head">In the cart (${got.length})</div>${got.map(row).join('')}<div class="btn-row">${btn('Clear the cart', 'gr-clear')}</div>` : ''}
+      <div class="btn-row">${btn('Add my staples', 'gr-staples', { ico: 'star' })}</div>`)}
   `, { ico: 'cart' });
 }
 
@@ -123,12 +189,28 @@ function openItem(g) {
 }
 
 function listText() {
-  const todo = S.grocery.filter((g) => !g.done);
-  const parts = AISLES.map((a) => {
-    const list = todo.filter((g) => (g.aisle || 'Other') === a);
-    return list.length ? `${a}\n${list.map((g) => `- ${g.name}${g.qty ? ` (${g.qty})` : ''}`).join('\n')}` : '';
-  }).filter(Boolean);
-  return `Grocery list\n\n${parts.join('\n\n')}`;
+  const store = storeOf();
+  const plan = currentPlan();
+  const parts = [];
+  for (const sec of SECTIONS) {
+    const list = plan.items.filter((x) => CAT_BY_ID[x.id] && CAT_BY_ID[x.id].sec === sec && !plan.got[x.id]);
+    if (list.length) parts.push(`${sec.toUpperCase()}\n${list.map((x) => `- ${descFor(CAT_BY_ID[x.id], store)} - ${x.qty}`).join('\n')}`);
+  }
+  const extras = S.grocery.filter((g) => !g.done);
+  if (extras.length) parts.push(`EXTRAS\n${extras.map((g) => `- ${g.name}${g.qty ? ` (${g.qty})` : ''}`).join('\n')}`);
+  const where = store === 'any' ? '' : ` - ${storeName(store)}`;
+  return `Grocery list${where}\n\n${parts.join('\n\n')}`;
+}
+
+// Copy text: the Clipboard API, with the old select-and-copy trick as a fallback
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
 }
 
 on({
@@ -169,6 +251,19 @@ on({
     try {
       if (navigator.share) { await navigator.share({ title: 'Grocery list', text }); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(text); toast('List copied - paste it anywhere', 'check'); } catch (e) { toast('Could not copy on this phone', 'warn'); }
+    if (await copyText(text)) toast('List copied - paste it anywhere', 'check'); else toast('Could not copy on this phone', 'warn');
+  },
+  'sg-store': (el) => { S.settings.groceryStore = el.dataset.s; save(); rerender(); },
+  'sg-got': (el) => { const plan = currentPlan(); plan.got[el.dataset.id] = el.checked; buzz(HAPTIC.tap); save(); rerender(); },
+  'sg-hide': (el) => { const plan = currentPlan(); plan.items = plan.items.filter((x) => x.id !== el.dataset.id); save(); rerender(); },
+  'sg-rebuild': () => { S.grocerySmart = buildList(); save(); buzz(HAPTIC.press); toast('Rebuilt from your last 7 days', 'cart'); rerender(); },
+  'sg-copy': async (el) => {
+    const it = CAT_BY_ID[el.dataset.id]; if (!it) return;
+    const x = currentPlan().items.find((y) => y.id === it.id);
+    const text = `${descFor(it, storeOf())}${x ? ` - ${x.qty}` : ''}`;
+    if (await copyText(text)) { buzz(HAPTIC.tap); toast(`Copied: ${it.name}`, 'check'); } else toast('Could not copy on this phone', 'warn');
+  },
+  'sg-copy-all': async () => {
+    if (await copyText(listText())) { buzz(HAPTIC.press); toast('List copied - paste it in Notes or a text', 'check'); } else toast('Could not copy on this phone', 'warn');
   },
 });
