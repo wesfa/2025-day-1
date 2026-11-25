@@ -1,9 +1,9 @@
 """Pixel muscle map: front and back bodies on a 45 x 80 grid, one letter per pixel, each letter a muscle.
 Writes js/body-grid.js. Run: python3 tools/body_art.py  (add --preview PATH to save a coloured PNG).
 
-A lean, natural athletic build (an athlete at the beach, not a bodybuilder): rounded delts, moderate traps,
-a defined chest and 6-pack, a visible V-taper, lean arms and athletic legs. The width is odd so there is a
-true centre column, and the art is mirror-symmetric (write_js checks it). In the app every muscle gets a
+An aesthetic athletic build (a fit tennis player, not a bodybuilder): round capped delts, thick arms, a
+moderate chest, a narrow waist with a 6-pack, sweeping quads with a teardrop and diamond calves. The width
+is odd so there is a true centre column, and the art is mirror-symmetric (write_js checks it). In the app every muscle gets a
 light outline and the seams between muscles are drawn light, like an anatomy chart.
 
 Letters: H head, X skin (hands, knees, feet), P shorts, N neck, T traps, S front/side delts, R rear delts,
@@ -63,10 +63,11 @@ def seam_centre(g, y0, y1):
 
 
 # ---- shared shapes (left half; x grows toward the centre at 22.5) ----
-# Proportions of a lean natural athlete: shoulders about 3.3 head-widths, waist about 2, hips a little wider.
-DELT = ell(13.6, 18.8, 3.0, 3.6)
+# Proportions: shoulders (delt to delt) about 3.8 head-widths, waist about 2, upper arm almost a head wide,
+# thighs together wider than the waist.
+DELT = ell(12.9, 18.8, 3.5, 4.0)
 NECK = lambda x, y: x >= 19.9 and 11.4 <= y < 16.0
-TRAP_SLOPE = lambda x, y: 14.4 <= x < 20.2 and 13.0 + (20.2 - x) * 0.38 <= y < 17.0
+TRAP_SLOPE = lambda x, y: 14.0 <= x < 20.2 and 12.8 + (20.2 - x) * 0.40 <= y < 17.0
 
 
 def interp(pts, t):
@@ -77,28 +78,28 @@ def interp(pts, t):
 
 
 def side(y):
-    """Left edge of the torso: chest at the armpits, a mild taper to the waist, then out again at the hips."""
+    """Left edge of the torso: chest at the armpits, tapering to a narrow waist, then the hips flare."""
     if y < 36.4:
-        return 15.2 + max(0, y - 24) * 0.10
-    return 16.4 - (y - 36.4) * 0.3
+        return 15.2 + max(0, y - 23) * 0.09
+    return 16.4 - (y - 36.4) * 0.5
 
 
 def arm(x, y):
-    return ell(11.3, 26.0, 2.4, 5.2)(x, y) and y >= 21.0
+    return ell(11.2, 26.2, 2.85, 5.4)(x, y) and y >= 21.0
 
 
 def forearm(x, y):
-    if not 31.8 <= y < 41.0:
+    if not 32.0 <= y < 41.0:
         return False
-    t = (y - 31.8) / 9.2
-    return 9.4 - t * 0.5 <= x < 14.0 - t * 2.0
+    t = (y - 32.0) / 9.0
+    return 9.0 - t * 1.0 <= x < 14.0 - t * 2.6
 
 
 def thigh(x, y):
     if not 41.0 <= y < 58.6:
         return False
     t = (y - 41.0) / 17.6
-    outer = interp([(0, 15.4), (0.3, 15.1), (0.6, 15.7), (0.85, 16.5), (1, 16.9)], t)
+    outer = interp([(0, 14.4), (0.25, 13.4), (0.5, 13.8), (0.75, 15.0), (1, 16.2)], t)  # the outer sweep
     inner = interp([(0, 22.0), (0.4, 21.9), (0.7, 21.6), (1, 21.2)], t)  # the centre column stays empty
     return outer <= x < inner
 
@@ -106,23 +107,23 @@ def thigh(x, y):
 def calf(x, y):
     if not 61.0 <= y < 75.2:
         return False
-    if y < 64 and 17.0 <= x < 21.2:  # just below the knee
+    if y < 63.5 and 16.0 <= x < 21.2:  # just below the knee
         return True
-    if ell(18.7, 66.0, 2.5, 4.4)(x, y):
+    if ell(18.3, 66.0, 3.0, 4.6)(x, y):  # the diamond
         return True
     t = (y - 66.0) / 9.2
-    return y >= 66.0 and 17.4 + t * 0.6 <= x < 21.0 - t * 0.8
+    return y >= 66.0 and 16.8 + t * 1.0 <= x < 21.0 - t * 1.0
 
 
 def common(g, back):
     fill(g, 'H', ell(CX, 6.0, 4.0, 5.2))
     fill(g, 'N', NECK)
     fill(g, 'I' if back else 'B', arm)
-    fill(g, 'X', lambda x, y: 9.6 <= x < 13.6 and 31.0 <= y < 31.8)  # elbow
+    fill(g, 'X', lambda x, y: 9.0 <= x < 13.8 and 31.2 <= y < 32.0)  # elbow
     fill(g, 'F', forearm)
-    fill(g, 'X', ell(10.2, 43.2, 2.0, 2.6))  # hands
-    fill(g, 'X', lambda x, y: 17.0 <= x < 21.2 and 58.6 <= y < 61.0)  # knees
-    fill(g, 'X', lambda x, y: 17.0 <= x < 21.2 and 75.2 <= y < 79.0)  # feet
+    fill(g, 'X', ell(9.6, 43.4, 2.0, 2.6))  # hands
+    fill(g, 'X', lambda x, y: 16.0 <= x < 21.2 and 58.6 <= y < 61.0)  # knees
+    fill(g, 'X', lambda x, y: 16.6 <= x < 21.2 and 75.2 <= y < 79.0)  # feet
     fill(g, 'M' if back else 'Q', thigh)
     fill(g, 'L', calf)
 
@@ -132,15 +133,18 @@ def front():
     common(g, back=False)
     fill(g, 'T', TRAP_SLOPE)
     torso = lambda x, y: side(y) <= x and 15.6 <= y < 36.4
-    pec_bottom = lambda x: 22.4 - max(0, 18.6 - x) * 0.9
+    pec_bottom = lambda x: 22.8 - max(0, 18.8 - x) * 0.85
     fill(g, 'O', lambda x, y: torso(x, y) and y >= 19.6)  # serratus / obliques down the sides
     fill(g, 'C', lambda x, y: torso(x, y) and y < pec_bottom(x))
-    fill(g, 'A', lambda x, y: 18.4 <= x and 22.4 <= y < 36.4)
+    fill(g, 'A', lambda x, y: 18.4 <= x and 22.8 <= y < 36.4)
     fill(g, 'a', lambda x, y: 18.4 <= x and int(y) in (25, 28, 31))  # a 6-pack: three seams
     seam_centre(g, 16, 36)  # sternum + linea alba
     fill(g, 'S', DELT)
     fill(g, 'P', lambda x, y: side(y) <= x and 36.4 <= y < 41.0)
-    fill(g, 'D', lambda x, y: thigh(x, y) and x >= 20.4 and y < 49)  # adductors, inner thigh
+    fill(g, 'D', lambda x, y: thigh(x, y) and x >= 19.2 + (y - 41) * 0.25)  # adductors: the inner-thigh wedge
+    # the teardrop (vastus medialis) above the knee
+    tear = lambda x, y: seg(19.6, 51.0, 18.4, 54.6, 0.45)(x, y) or seg(18.4, 54.6, 19.0, 58.0, 0.45)(x, y)
+    fill(g, 'q', lambda x, y: thigh(x, y) and tear(x, y))
     return g
 
 
@@ -156,10 +160,10 @@ def back():
     fill(g, 'O', lambda x, y: side(y) <= x < 19.4 and 36.4 <= y < 37.8)
     fill(g, 'T', trap)
     fill(g, 'R', DELT)
-    glute_max = ell(20.0, 42.0, 3.9, 4.4)
-    fill(g, 'G', lambda x, y: (side(y) <= x and 37.8 <= y < 41.0) or (glute_max(x, y) and y >= 37.8))
+    glute_max = ell(19.6, 42.2, 4.3, 4.4)
+    fill(g, 'G', lambda x, y: (side(y) <= x and 37.8 <= y < 41.0) or (glute_max(x, y) and 37.8 <= y < 46.0))
     # the rounded top of glute max against the hip (glute med)
-    fill(g, 'g', lambda x, y: side(y) <= x < 19.0 and 37.8 <= y < 41.0 and ell(20.0, 42.0, 4.6, 5.1)(x, y) and not glute_max(x, y))
+    fill(g, 'g', lambda x, y: side(y) <= x < 19.0 and 37.8 <= y < 41.0 and ell(19.6, 42.2, 5.0, 5.1)(x, y) and not glute_max(x, y))
     seam_centre(g, 16, 46)  # spine + cleft
     fill(g, 'm', lambda x, y: thigh(x, y) and y >= 46.5 and seg(19.0, 47.5, 18.8, 56.5, 0.4)(x, y))  # hamstring split
     fill(g, 'l', lambda x, y: calf(x, y) and seg(18.6, 62.0, 18.6, 68.0, 0.4)(x, y))  # two calf heads
