@@ -8,6 +8,7 @@ import { openAddFood, openFoodDetail, mealForNow, microStrip } from './food.js';
 import { logWeight, weightStats } from './weight.js';
 import { dueNow, dateRule, DATE_KINDS } from './reminders.js';
 import './ai.js';
+import { sleepCard } from './sleep.js';
 
 // High-protein / calorie-dense staples the coach can suggest
 const PROTEIN_PICKS = [
@@ -85,6 +86,7 @@ export function renderToday() {
   else train = btn('Open gym', 'nav', { data: 'data-to="#/gym"' });
 
   const sug = suggestions(left);
+  const sleep = sleepCard();
   const DAY = 86400000;
   const showInstall = !isStandalone() && !(S.settings.hideInstallUntil > Date.now());
   const backupDue = Date.now() - (S.settings.lastBackup || S.created || Date.now()) > 14 * DAY && !(S.settings.hideBackupUntil > Date.now());
@@ -133,12 +135,15 @@ export function renderToday() {
     ${microStrip(t, tg)}
   `, { ico: 'calendar', cls: 'today-main' })}
 
+  ${sleep ? win('Sleep', sleep, { ico: 'moon' }) : ''}
+
   ${win('Log Food', `
     ${btn('Snap a photo - AI logs it', 'ai-open', { cls: 'primary wide ai-cta', ico: 'camera', data: `data-meal="${mealForNow()}"` })}
     <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}"><span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
     ${sug.length ? `<div class="sub-head">Coach says: ${left.p > 20 ? `you need <b class="c-p">${r0(left.p)}g protein</b>` : `<b>${fmt(left.cal)} kcal</b> left`}. Try:</div>
       <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · <span class="c-p">${r0(f.p)}g P</span></small><b>+</b></button>`).join('')}</div>` : ''}
     ${left.cal < -300 && tg.dir < 0 ? '<p class="muted small">Over today. No stress - one day doesn\'t matter, the weekly average does.</p>' : ''}
+    <div class="btn-row">${btn('Eating out? Fast food mode', 'ff-open', { ico: 'burger', cls: 'wide', data: `data-meal="${mealForNow()}"` })}</div>
   `, { ico: 'burger' })}
 
   ${win('Training', train, { ico: 'dumbbell' })}

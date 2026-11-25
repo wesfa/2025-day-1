@@ -5,7 +5,16 @@ import { S, save, peekDay } from './store.js';
 import { toMin, fromMin, fmtTime, dayKey, parseDay, pad2, uid, isAndroid } from './util.js';
 
 const BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-const KIND_TAG = { weigh: 'alarm_clock', meal: 'fork_and_knife', check: 'palm_tree', gym: 'muscle', read: 'books', custom: 'bell' };
+const KIND_TAG = { weigh: 'alarm_clock', meal: 'fork_and_knife', check: 'palm_tree', gym: 'muscle', read: 'books', sleep: 'zzz', custom: 'bell' };
+
+// The clock time a reminder is set for. Sleep reminders follow your bedtime or wake-up time (rel + off minutes).
+export function remTime(r) {
+  if (r.rel === 'bed' || r.rel === 'wake') {
+    const base = toMin(r.rel === 'bed' ? S.schedule.sleep || '22:30' : S.schedule.wake || '06:00');
+    return fromMin((((base + (Number(r.off) || 0)) % 1440) + 1440) % 1440);
+  }
+  return r.time;
+}
 
 export const DATE_KINDS = {
   off: 'No school',
@@ -71,7 +80,7 @@ function place(rem, dow, ranges, rule) {
   if (rule && rule.kind === 'away' && pausedAway(rem)) return null;
   const wake = toMin(S.schedule.wake || '06:00');
   const sleep = toMin(S.schedule.sleep || '22:30');
-  let t = toMin(rem.time);
+  let t = toMin(remTime(rem));
   let moved = '';
   if (t < wake) { t = wake + 5; moved = 'after wake-up'; }
   if (t > sleep) { t = sleep - 15; moved = 'before bed'; }

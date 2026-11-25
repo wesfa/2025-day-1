@@ -8,6 +8,10 @@ import { icon } from './icons.js';
 import { MUSCLES, EQUIPMENT, EX_META } from './exlib.js';
 import { exerciseRanks, isRanked } from './strength.js';
 import { badge, openRankDetail } from './ranks.js';
+import { coach, RPE_LEFT, rangeText, fmtSet } from './coach.js';
+
+// After a set is checked off, a one-tap "how hard was that?" row opens under it
+let rpeAsk = null;   // { i, j }
 
 const firstNum = (s) => { const m = String(s || '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
 
@@ -69,7 +73,7 @@ function startWorkout(tpl) {
   const w = {
     id: uid(), date: dayKey(), start: Date.now(), end: null,
     tid: tpl ? tpl.id : null, name: tpl ? tpl.name : 'Workout',
-    ex: tpl ? tpl.items.map((i) => ({ ...makeExEntry(i.ex, 1, i.reps), target: i.reps ? `${i.sets} x ${i.reps}` : '' })) : [], notes: '',
+    ex: tpl ? tpl.items.map((i) => ({ ...makeExEntry(i.ex, 1, i.reps), target: i.reps ? `${i.sets} x ${i.reps}` : '', ts: i.sets })) : [], notes: '',
   };
   S.workouts.push(w);
   S.activeId = w.id;
@@ -105,29 +109,41 @@ export function renderWorkout() {
     const rk = ranks[e.ex];
     const [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
     const last = lastSetsFor(e.ex, w.id);
-    const sug = overload(ex, e, last);
-    // SET | PREV (same set last time) | weight | reps | done. Fields start empty - you type what you did.
+    const co = coach(w, i);
+    const sug = co ? null : overload(ex, e, last);
+    const ghost = co && co.next && !co.enough ? co.next : null;
+    // SET | PREV (same set last time) | weight | reps | RPE | done. Fields start empty - you type what you did,
+    // or tap the check to take the coach's grey suggestion.
     const rows = e.sets.map((s, j) => {
       const ls = last ? last.sets[j] : null;
       const prev = ls ? (num(ls.w) ? `${ls.w} x ${ls.r}` : `${ls.r}`) : '-';
+      const ph = !s.done && ghost ? ghost : null;
+      const asking = rpeAsk && rpeAsk.i === i && rpeAsk.j === j && s.done;
       return `<div class="set-swipe" data-i="${i}" data-j="${j}">
         <button class="set-trash" data-act="set-del" data-i="${i}" data-j="${j}" aria-label="Delete set ${j + 1}">${icon('trash', 20)}</button>
         <div class="set ${s.done ? 'done' : ''}">
           <span class="set-n">${j + 1}</span>
           <span class="set-prev">${esc(prev)}</span>
-          <input class="inp" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1}">
-          <input class="inp" type="number" inputmode="numeric" step="any" value="${esc(s.r)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="r" aria-label="${l2}">
+          <input class="inp" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" ${ph && ph.w !== '' ? `placeholder="${esc(ph.w)}"` : ''} data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1}">
+          <input class="inp" type="number" inputmode="numeric" step="any" value="${esc(s.r)}" ${ph ? `placeholder="${esc(ph.r)}"` : ''} data-change="set-val" data-i="${i}" data-j="${j}" data-k="r" aria-label="${l2}">
+          ${s.done ? `<button class="rpe-cell ${s.rpe ? 'on' : ''}" data-act="rpe-ask" data-i="${i}" data-j="${j}" aria-label="How hard (RPE)">${s.rpe ? esc(s.rpe) : '?'}</button>` : '<span class="rpe-cell off"></span>'}
           <button class="chk ${s.done ? 'on' : ''}" data-act="set-done" data-i="${i}" data-j="${j}" aria-label="${s.done ? 'Done - tap to undo' : 'Mark done'}">${icon('check', 16)}</button>
         </div>
-      </div>`;
+      </div>${asking ? rpePicker(i, j, s.rpe) : ''}`;
     }).join('');
+    const coachLine = co ? `<div class="coach-tip coach ${co.next && !co.enough ? 'up' : ''}">
+        <div class="co-top"><b>Aim ${co.sets} x ${rangeText(co)}</b> <span class="muted">@ RPE ${co.rpe} · ${RPE_LEFT[co.rpe]}</span>${co.setNo ? `<span class="co-set muted">set ${co.setNo}/${co.sets}</span>` : ''}</div>
+        ${co.next && !co.enough ? `<div>Next: <b class="vt">${esc(fmtSet(co.next, ex.type === 'body'))}</b>${co.next.why ? ` <span class="muted">· ${esc(co.next.why)}</span>` : ''}</div>` : ''}
+        ${co.advice ? `<div class="muted">${esc(co.advice)}</div>` : ''}
+      </div>` : '';
     return `<section class="group ex-block">
       <div class="group-title"><button class="link" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button></div>
-      <div class="ex-meta">${e.target ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last ? '' : '<span class="muted small">First time - start light, own the form</span>'}
+      <div class="ex-meta">${e.target && !co ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last || co ? '' : '<span class="muted small">First time - start light, own the form</span>'}
         <button class="ex-more" data-act="ex-menu" data-i="${i}" aria-label="More for ${esc(ex.name)}">&middot;&middot;&middot;</button></div>
       ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">next: ${esc(rk.next.label)}</span>` : ''}</button>` : ''}
+      ${coachLine}
       ${sug ? `<div class="coach-tip ${sug.up ? 'up' : ''}">${sug.up ? icon('up', 10) : ''} ${esc(sug.msg)}</div>` : ''}
-      <div class="set set-head"><span class="set-n">Set</span><span>Prev</span><span>${l1}</span><span>${l2}</span><span></span></div>
+      <div class="set set-head"><span class="set-n">Set</span><span>Prev</span><span>${l1}</span><span>${l2}</span><span>RPE</span><span></span></div>
       ${rows}
       <button class="btn wide add-set" data-act="set-add" data-i="${i}">+ Add set</button>
     </section>`;
@@ -163,24 +179,43 @@ on({
     const [inW, inR] = el.closest('.set').querySelectorAll('input');
     s.w = inW.value; s.r = inR.value;
     if (!s.done) {
+      // empty fields + a coach suggestion: checking it off means "did what you said"
+      if (s.r === '' && inR.placeholder) { s.r = inR.placeholder; if (s.w === '' && inW.placeholder) s.w = inW.placeholder; }
       if (s.r === '') { toast('Enter your reps first', 'warn'); inR.focus(); return; }
       s.done = true;
       buzz(HAPTIC.press);
+      rpeAsk = { i, j };
       if (S.settings.restAuto) startRest(getEx(e.ex).rest || 90);
     } else {
       s.done = false;
+      if (rpeAsk && rpeAsk.i === i && rpeAsk.j === j) rpeAsk = null;
     }
     save(); rerender();
   },
-  // a new set copies the last set's numbers exactly, ready to check off
+  // A new set copies the last set's numbers, ready to check off. With auto weight & reps on, a set added after a
+  // finished one gets the coach's numbers instead (adjusted for how hard the last set was).
   'set-add': (el) => {
-    const w = activeWorkout(); const e = w.ex[el.dataset.i];
-    const rowInputs = document.querySelectorAll(`[data-change="set-val"][data-i="${el.dataset.i}"]`);
+    const w = activeWorkout(); const i = Number(el.dataset.i); const e = w.ex[i];
+    const rowInputs = document.querySelectorAll(`[data-change="set-val"][data-i="${i}"]`);
     rowInputs.forEach((inp) => { e.sets[inp.dataset.j][inp.dataset.k] = inp.value; });
     const last = e.sets[e.sets.length - 1] || { w: '', r: '' };
-    e.sets.push({ w: last.w, r: last.r, done: false });
+    const co = last.done ? coach(w, i) : null;
+    if (co && co.next) {
+      e.sets.push({ w: co.next.w, r: String(co.next.r), done: false });
+      if (co.next.w !== last.w || String(co.next.r) !== String(last.r)) toast(`Next set: ${fmtSet(co.next, getEx(e.ex).type === 'body')}${co.next.why ? ` - ${co.next.why}` : ''}`, 'dumbbell');
+    } else e.sets.push({ w: last.w, r: last.r, done: false });
+    rpeAsk = null;
     save(); rerender();
   },
+  'rpe-ask': (el) => { rpeAsk = { i: Number(el.dataset.i), j: Number(el.dataset.j) }; rerender(); },
+  'rpe-set': (el) => {
+    const w = activeWorkout(); if (!w) return;
+    const s = w.ex[el.dataset.i] && w.ex[el.dataset.i].sets[el.dataset.j];
+    if (!s) return;
+    s.rpe = Number(el.dataset.v);
+    rpeAsk = null; save(); rerender();
+  },
+  'rpe-skip': () => { rpeAsk = null; rerender(); },
   'set-del': (el) => deleteSet(Number(el.dataset.i), Number(el.dataset.j)),
   'ex-menu': async (el) => {
     const w = activeWorkout(); const i = Number(el.dataset.i); const e = w.ex[i];
@@ -209,7 +244,7 @@ on({
   'wo-discard': async () => {
     if (!(await confirmBox('Throw away this workout? Nothing will be saved.', 'Discard workout', 'Discard'))) return;
     S.workouts = S.workouts.filter((x) => x.id !== S.activeId);
-    S.activeId = null; save(true); stopRest(); go('#/gym');
+    S.activeId = null; rpeAsk = null; save(true); stopRest(); go('#/gym');
   },
   'wo-finish': async () => {
     const w = activeWorkout(); if (!w) return;
@@ -228,7 +263,7 @@ on({
     // drop unchecked sets so history stays clean
     w.ex.forEach((e) => { e.sets = e.sets.filter((s) => s.done); });
     w.ex = w.ex.filter((e) => e.sets.length);
-    S.activeId = null;
+    S.activeId = null; rpeAsk = null;
     save(true); stopRest();
     // rank-ups: a lift that moved up a division (or more) because of this workout
     const step = (sc) => (sc >= 6 ? 18 : Math.floor(sc * 3));
@@ -247,8 +282,18 @@ on({
   },
 });
 
+// "How hard was that?" - one tap under the set you just finished
+function rpePicker(i, j, cur) {
+  return `<div class="rpe-pick" role="group" aria-label="How hard was set ${j + 1}?">
+    <span class="rpe-q">How hard was that set? (RPE)</span>
+    ${[6, 7, 8, 9, 10].map((v) => `<button class="btn chip ${Number(cur) === v ? 'on' : ''}" data-act="rpe-set" data-i="${i}" data-j="${j}" data-v="${v}"><b>${v}</b><small>${v === 10 ? 'max' : v === 6 ? '4+ left' : `${10 - v} left`}</small></button>`).join('')}
+    <button class="btn chip rpe-skip" data-act="rpe-skip" aria-label="Skip">${icon('close', 8)}</button>
+  </div>`;
+}
+
 function deleteSet(i, j) {
   const w = activeWorkout(); if (!w || !w.ex[i] || !w.ex[i].sets[j]) return;
+  rpeAsk = null;
   w.ex[i].sets.splice(j, 1);
   buzz(HAPTIC.press);
   save(); rerender();
@@ -444,6 +489,8 @@ on({
   'ex-info': (el) => openExInfo(el.dataset.id),
 });
 
+const setTxt = (s) => `${num(s.w) ? `${s.w}x${s.r}` : s.r}${s.rpe ? `@${s.rpe}` : ''}`;
+
 function exHistory(exId) {
   const out = [];
   for (const w of doneWorkouts()) {
@@ -467,7 +514,7 @@ function openExInfo(id) {
     ${ex.why ? `<p class="why">${esc(ex.why)}</p>` : ''}
     ${ex.cues && ex.cues.length ? group('Coaching cues', `<ol class="cues">${ex.cues.map((c) => `<li>${esc(c)}</li>`).join('')}</ol>`) : ''}
     ${best ? group('Personal best', `<p>${icon('trophy', 16)} <b>${best.w} x ${best.r}</b> on ${esc(prettyDay(best.date))}</p><p>Estimated 1-rep max: <b class="vt">${r0(best.e)}</b> lb</p>`) : ''}
-    ${group('History', hist.length ? hist.slice(0, 8).map((h) => `<div class="hist-line"><span>${esc(prettyDay(h.date, { short: true }))}</span><span>${h.sets.map((s) => (num(s.w) ? `${s.w}x${s.r}` : s.r)).join(', ')}</span></div>`).join('') : '<p class="empty">No history yet.</p>')}
+    ${group('History', hist.length ? hist.slice(0, 8).map((h) => `<div class="hist-line"><span>${esc(prettyDay(h.date, { short: true }))}</span><span>${h.sets.map(setTxt).join(', ')}</span></div>`).join('') : '<p class="empty">No history yet.</p>')}
     <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>
   `, { cls: 'dialog', close: 'modal-close', ico: 'book' }));
 }
@@ -496,7 +543,7 @@ function openWorkoutDetail(id) {
   if (!w) return;
   openModal(() => win(esc(w.name), `
     <p class="muted">${esc(prettyDay(w.date))} · ${fmtDuration(w.end - w.start)} · ${fmt(volume(w))} lb</p>
-    ${w.ex.map((e) => `<div class="hist-line"><span>${esc(getEx(e.ex).name)}</span><span>${e.sets.map((s) => (num(s.w) ? `${s.w}x${s.r}` : s.r)).join(', ')}</span></div>`).join('')}
+    ${w.ex.map((e) => `<div class="hist-line"><span>${esc(getEx(e.ex).name)}</span><span>${e.sets.map(setTxt).join(', ')}</span></div>`).join('')}
     ${w.notes ? `<p class="why">"${esc(w.notes)}"</p>` : ''}
     <div class="btn-row">${btn('Delete', 'wd-del', { cls: 'danger', data: `data-id="${w.id}"` })}${btn('Close', 'modal-close', { cls: 'grow' })}</div>
   `, { cls: 'dialog', close: 'modal-close', ico: 'dumbbell' }));

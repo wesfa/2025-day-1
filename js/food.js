@@ -23,6 +23,7 @@ import { dayKey, addDays, prettyDay, esc, r0, r1, num, fmt, uid, buzz, HAPTIC } 
 import { win, group, bar, btn, field, numInput, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, promptBox, formData } from './ui.js';
 import { icon } from './icons.js';
 import { openAI } from './ai.js';
+import { addFoodToGrocery } from './grocery.js';
 
 export const view = { date: dayKey() };
 
@@ -81,6 +82,7 @@ export function renderFood() {
     </div>
     ${meals}
     <div class="btn-row">${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}${btn('Quick add calories', 'quick-add', { data: `data-meal="${mealForNow()}"` })}${btn('My foods', 'my-foods')}</div>
+    <div class="btn-row">${btn('Fast food mode', 'ff-open', { ico: 'burger', data: `data-meal="${mealForNow()}"` })}${btn('Grocery list', 'nav', { ico: 'cart', data: 'data-to="#/grocery"' })}</div>
   `, { ico: 'burger' });
 }
 
@@ -270,7 +272,7 @@ function renderFoodDetail() {
   return win(esc(f.name), `
     <div class="fd-head">
       <div><div class="fd-serv">1 serving = ${esc(f.serving)}</div>${f.cat ? `<div class="muted">${esc(f.cat)}</div>` : ''}</div>
-      ${f.id ? `<button class="btn sq" data-act="fd-fav" aria-label="Favorite">${icon(fav ? 'star' : 'starOff', 20)}</button>` : ''}
+      <span class="fd-btns">${f.cat !== 'Fast Food' ? `<button class="btn sq" data-act="fd-grocery" aria-label="Add to grocery list">${icon('cart', 20)}</button>` : ''}${f.id ? `<button class="btn sq" data-act="fd-fav" aria-label="Favorite">${icon(fav ? 'star' : 'starOff', 20)}</button>` : ''}</span>
     </div>
     <div class="qty-row">
       <button class="btn sq big" data-act="fd-step" data-d="-1">-</button>
@@ -313,6 +315,7 @@ on({
   'fd-set': (el) => { fd.qty = Number(el.dataset.v); drawModals(); },
   'fd-unit': () => { fd.unit = fd.unit === 'g' ? 'srv' : 'g'; drawModals(); },
   'fd-meal': (el) => { fd.meal = el.value; drawModals(); },
+  'fd-grocery': () => addFoodToGrocery(fd.food),
   'fd-fav': () => {
     const id = fd.food.id;
     if (S.favs.includes(id)) S.favs = S.favs.filter((x) => x !== id);

@@ -2,7 +2,7 @@
 import { S, save, targets, daySplit, currentWeight, replaceState, resetState, DEFAULT_REMINDERS, mergeInto, normalize, summarize } from './store.js';
 import { listSnapshots } from './vault.js';
 import { calcTargets, microTargets, PHASES } from './calc.js';
-import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText } from './reminders.js';
+import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText, remTime } from './reminders.js';
 import { dayKey, addDays, parseDay, prettyDay, shortDate, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid, isStandalone, toMin, buzz, HAPTIC, setHaptics } from './util.js';
 import { win, group, btn, field, numInput, select, dayPicker, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, promptBox, formData } from './ui.js';
 import { icon } from './icons.js';
@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.13.5';
+export const APP_VERSION = '1.14.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',
@@ -141,6 +141,11 @@ export function renderSettings() {
 
     ${show('ai', aiSettingsGroup())}
 
+    ${show('more', group('Training', `
+      <label class="check"><input type="checkbox" data-change="set-coach" ${S.settings.coach !== false ? 'checked' : ''}><span>Auto weight &amp; reps: the app picks each set from how hard the last one felt (RPE)</span></label>
+      ${field('Training for', select('trainGoal', [['muscle', 'Muscle gain - 6-15 reps, 2-4 hard sets'], ['strength', 'Strength - the program\'s reps (e.g. 5 x 5)']], S.settings.trainGoal || 'muscle', { data: 'data-change="set-goal"' }))}
+      <p class="muted small">Explosive lifts (cleans, jumps, push press) always keep the program's reps at RPE 7 so they stay fast.</p>`))}
+
     ${show('more', group('Reminders', `<p>Weigh-in, meal, and gym reminders that skip school and work hours.</p>${btn('Open Reminders', 'nav', { data: 'data-to="#/reminders"', ico: 'bell', cls: 'wide' })}`))}
 
     ${show('look', group('Appearance', `
@@ -211,6 +216,8 @@ on({
     save(); rerender();
   },
   'set-restauto': (el) => { S.settings.restAuto = el.checked; save(); },
+  'set-coach': (el) => { S.settings.coach = el.checked; save(); },
+  'set-goal': (el) => { S.settings.trainGoal = el.value === 'strength' ? 'strength' : 'muscle'; save(); },
   'sky-gps': async () => {
     toast('Finding your location...', 'sun');
     try {
@@ -373,7 +380,7 @@ export function renderReminders() {
   const remRows = S.reminders.map((r) => `
     <div class="row static ${r.on ? '' : 'off'}">
       <label class="check inline"><input type="checkbox" data-change="rem-toggle" data-id="${r.id}" ${r.on ? 'checked' : ''}><span class="sr">On</span></label>
-      <button class="row-main link-row" data-act="rem-edit" data-id="${r.id}"><span class="row-name">${esc(r.label)}</span><span class="row-sub">${fmtTime(r.time)} · ${r.days.length === 7 ? 'every day' : r.days.map((d) => DOW[d]).join(' ')}</span></button>
+      <button class="row-main link-row" data-act="rem-edit" data-id="${r.id}"><span class="row-name">${esc(r.label)}</span><span class="row-sub">${fmtTime(remTime(r))}${relText(r)} · ${r.days.length === 7 ? 'every day' : r.days.map((d) => DOW[d]).join(' ')}</span></button>
     </div>`).join('');
 
   // the next 7 real days, with holidays / early dismissal / trips applied
@@ -484,6 +491,14 @@ async function doImport(text) {
   }
 }
 
+// " (30 min before bedtime)" for reminders that follow bedtime / wake-up
+function relText(r) {
+  if (!r.rel) return '';
+  const m = Number(r.off) || 0;
+  const what = r.rel === 'bed' ? 'bedtime' : 'wake-up';
+  return m === 0 ? ` (at ${what})` : ` (${Math.abs(m)} min ${m < 0 ? 'before' : 'after'} ${what})`;
+}
+
 // ---- reminder editor ----
 function openRem(r) {
   const isNew = !r;
@@ -492,7 +507,7 @@ function openRem(r) {
     <form id="rem" onsubmit="return false">
       ${field('Title', `<input class="inp" name="label" value="${esc(r.label)}">`)}
       ${field('Message', `<input class="inp" name="msg" value="${esc(r.msg)}" placeholder="What should it say?">`)}
-      ${field('Preferred time', `<input class="inp" type="time" name="time" value="${r.time}">`)}
+      ${field('Preferred time', `<input class="inp" type="time" name="time" value="${remTime(r)}">`, { hint: r.rel ? `Follows your ${r.rel === 'bed' ? 'bedtime' : 'wake-up time'}${relText(r)}. Pick a different time to pin it to that time instead.` : '' })}
       ${field('Days', dayPicker('days', r.days))}
       ${field('If it lands during school/work, move it', select('prefer', [['after', 'right after'], ['before', 'right before']], r.prefer))}
       <div class="btn-row">${btn('Save', 'rem-save', { cls: 'primary grow', type: 'submit', data: `data-id="${r.id}"` })}${isNew || !String(r.id).startsWith('r') ? '' : btn('Delete', 'rem-del', { cls: 'danger', data: `data-id="${r.id}"` })}${btn('Cancel', 'modal-close')}</div>
@@ -542,6 +557,8 @@ on({
     const v = formData(document.getElementById('rem'));
     if (!v.days.length) { toast('Pick at least one day', 'warn'); return; }
     const old = S.reminders.find((x) => x.id === el.dataset.id);
+    // a sleep reminder keeps following bedtime / wake-up unless its time was changed by hand
+    if (old && old.rel && v.time !== remTime(old)) { delete old.rel; delete old.off; }
     const r = { ...(old || { kind: 'custom', on: true }), id: el.dataset.id, label: v.label.trim() || 'Reminder', msg: v.msg.trim(), time: v.time, days: v.days.map(Number), prefer: v.prefer };
     if (old) Object.assign(old, r); else S.reminders.push(r);
     closeModal(); schedChanged();

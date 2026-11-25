@@ -478,8 +478,8 @@ body.resting { padding-bottom: calc(var(--tb-h) + env(safe-area-inset-bottom) + 
 .wo-head .vt { font-size: 24px; }
 .ex-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .tag { background: var(--accent); color: var(--accent-text); padding: 1px 6px; font-size: 14px; }
-/* set rows: SET | PREV | weight | reps | done */
-.set { display: grid; grid-template-columns: 34px minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr) 46px; gap: 6px; align-items: center; padding: 4px 2px; }
+/* set rows: SET | PREV | weight | reps | RPE | done */
+.set { display: grid; grid-template-columns: 30px minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr) 34px 44px; gap: 5px; align-items: center; padding: 4px 2px; }
 .set-head { font-size: 12px; color: var(--muted); text-align: center; margin: 6px 0 0; text-transform: uppercase; letter-spacing: 1px; }
 .set-n { text-align: center; font-family: 'VT323', monospace; font-size: 22px; }
 .set-prev { text-align: center; font-family: 'VT323', monospace; font-size: 19px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1063,6 +1063,77 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 @media (max-width: 480px) {
   [data-theme="dusk"] .wiz-side { background-position: -30px bottom, center bottom 18px, 70% 10px, left bottom, 0 0; background-size: 384px 150px, 300px 132px, 30px 30px, 8px 640px, auto; }
 }
+
+/* ---- v1.14: RPE + auto targets ---- */
+.set .inp::placeholder { color: var(--muted); opacity: 0.55; }
+.rpe-cell { width: 34px; height: 34px; border: 1px dashed var(--lo); background: transparent; color: var(--muted); font-family: 'VT323', monospace; font-size: 20px; padding: 0; cursor: pointer; justify-self: center; }
+.rpe-cell.on { border-style: solid; color: var(--text); }
+.rpe-cell.off { border: 0; cursor: default; }
+.rpe-pick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) 34px; align-items: stretch; gap: 4px; padding: 6px 4px 8px; margin: -2px 0 4px; background: var(--tip); }
+.rpe-pick .rpe-q { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
+.rpe-pick .btn.chip { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; min-width: 0; padding: 4px 2px; margin: 0; }
+.rpe-pick .btn.chip b { font-family: 'VT323', monospace; font-size: 22px; font-weight: 400; }
+.rpe-pick .btn.chip small { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.rpe-pick .rpe-skip { padding: 0; }
+.coach-tip.coach { display: flex; flex-direction: column; gap: 2px; }
+.coach-tip .co-top { display: flex; align-items: baseline; gap: 6px; }
+.coach-tip .co-set { margin-left: auto; white-space: nowrap; }
+.coach-tip.coach .vt { font-size: 21px; }
+
+/* ---- sleep ---- */
+.sleep-card p { margin: 4px 0; }
+.sleep-card .px-ico { vertical-align: -3px; }
+.sl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+.sl-last .vt { font-size: 24px; }
+.sl-chart { display: block; margin: 4px 0; }
+.sl-chart .sl-bar { fill: var(--accent); opacity: 0.75; }
+.sl-chart .sl-bar.ok { fill: var(--good); opacity: 0.9; }
+.sl-chart .sl-bar.low { fill: var(--bad); opacity: 0.8; }
+.sl-chart .sl-none { fill: var(--lo); }
+.sl-chart .sl-goal { stroke: var(--text); stroke-width: 1; stroke-dasharray: 4 3; }
+.sl-chart .sl-grid { stroke: var(--grid); stroke-width: 1; }
+.sl-chart .sl-day, .sl-chart .sl-ax { fill: var(--muted); font-size: 10px; font-family: 'DotGothic16', monospace; }
+.check-row { gap: 12px; cursor: pointer; }
+.tips { margin: 0; padding-left: 20px; font-size: 15px; }
+.tips li { margin: 4px 0; }
+
+/* ---- grocery ---- */
+.gr-row { gap: 10px; }
+.gr-row.done .row-name { text-decoration: line-through; color: var(--muted); }
+.fd-btns { display: flex; gap: 6px; }
+
+/* ---- fast food ---- */
+.ff-chains .btn.chip { font-size: 14px; min-height: 34px; padding: 3px 10px; }
+.ff-left { padding: 8px 10px; font-size: 15px; margin: 6px 0; }
+.ff-left .vt { font-size: 22px; }
+.ff-budget { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 8px; }
+.ff-budget .chips { margin: 0; }
+.ff-budget select { width: auto; flex: 1; min-width: 120px; }
+.ff-order { padding: 10px; margin: 8px 0; }
+.ff-order.best { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ff-head { display: flex; align-items: baseline; gap: 6px; }
+.ff-head .tag { margin-right: auto; }
+.ff-head > .muted:first-child { margin-right: auto; }
+.ff-head .vt { font-size: 28px; line-height: 1; }
+.ff-items { margin: 6px 0; padding-left: 20px; font-size: 16px; }
+.ff-items li { margin: 2px 0; }
+.ff-mac { font-size: 14px; margin-bottom: 8px; }
+.ff-menu { margin: 10px 0; }
+.ff-menu summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+
+/* ---- bulk quality + measurements ---- */
+.bq-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 8px; }
+.bq-grade { font-family: 'VT323', monospace; font-size: 46px; line-height: 1; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; border: 2px solid currentColor; }
+.bq-grade.g-A { color: var(--good); } .bq-grade.g-B { color: var(--accent); } .bq-grade.g-C { color: #e8b13c; } .bq-grade.g-D { color: var(--bad); }
+.bq-list { list-style: none; margin: 0; padding: 0; font-size: 15px; }
+.bq-list li { display: flex; align-items: baseline; gap: 6px; padding: 4px 0; border-bottom: 1px dotted var(--lo); }
+.bq-list li b { min-width: 64px; }
+.bq-dot { width: 9px; height: 9px; flex: none; background: var(--muted); align-self: center; }
+.bq-good .bq-dot { background: var(--good); } .bq-ok .bq-dot { background: #e8b13c; } .bq-bad .bq-dot { background: var(--bad); }
+.bq-advice { background: var(--tip); padding: 6px 8px; border-left: 4px solid var(--accent); margin: 8px 0 4px; font-size: 15px; }
+.ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+.ms-grid .btn-row { grid-column: 1 / -1; }
+.ms-grid .field:first-child { grid-column: 1 / -1; }
 
 /* Each nutrient keeps its own colour in labels and numbers, matching its bar (kept last so it beats hint-text greys) */
 html .c-p { color: var(--mp); } html .c-c { color: var(--mc); } html .c-f { color: var(--mf); }

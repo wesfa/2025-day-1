@@ -4,6 +4,7 @@ import { weeklyRate } from './calc.js';
 import { dayKey, addDays, prettyDay, shortDate, esc, r1, num, daysBetween, parseDay, buzz, HAPTIC } from './util.js';
 import { win, group, bar, btn, field, on, rerender, toast, confirmBox } from './ui.js';
 import { icon } from './icons.js';
+import { bulkGroup, measureGroup } from './bulk.js';
 
 const wv = { range: 30, date: dayKey() };
 
@@ -80,10 +81,14 @@ export function renderWeight() {
     <div class="goal-bar">${bar(Math.max(0, st.progress) * 100, 100)}<span class="muted small">${Math.round(Math.max(0, Math.min(1, st.progress)) * 100)}% of the way</span></div>
     <p class="pace">${paceMsg}${st.eta ? ` At this pace you hit ${r1(st.goal)} around <b>${months[st.eta.getMonth()]} ${st.eta.getDate()}</b>.` : ''}</p>
 
+    ${bulkGroup()}
+
     ${group('Chart', `
       <div class="chips">${[[14, '2W'], [30, '1M'], [90, '3M'], [365, '1Y'], [9999, 'All']].map(([d, l]) => `<button class="btn chip ${wv.range === d ? 'on' : ''}" data-act="w-range" data-r="${d}">${l}</button>`).join('')}</div>
       <div class="chart-wrap sunken"><canvas id="w-chart" aria-label="Weight chart"></canvas><div class="chart-lbl" id="w-lbl"></div></div>
       <div class="legend"><span><i class="lg-dot"></i>weigh-in</span><span><i class="lg-line"></i>7-day avg</span><span><i class="lg-goal"></i>goal</span></div>`)}
+
+    ${measureGroup()}
 
     ${group('Recent', recent.length ? recent.map(([kk, v], i) => {
       const prev = recent[i + 1];

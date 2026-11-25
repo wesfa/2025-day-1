@@ -15,6 +15,9 @@ import { syncPush } from './reminders.js';
 import './report.js';
 import { openAI } from './ai.js';
 import { renderGame, mountGame } from './game.js';
+import { renderSleep } from './sleep.js';
+import { renderGrocery } from './grocery.js';
+import { openFastFood } from './fastfood.js';
 
 const SCREENS = {
   today: { render: renderToday, title: 'Today' },
@@ -26,6 +29,8 @@ const SCREENS = {
   reminders: { render: renderReminders, title: 'Reminders' },
   settings: { render: renderSettings, title: 'Settings' },
   play: { render: renderGame, title: 'Gridlock', after: mountGame },
+  sleep: { render: renderSleep, title: 'Sleep' },
+  grocery: { render: renderGrocery, title: 'Grocery List' },
 };
 
 const TASKS = [
@@ -92,6 +97,9 @@ function renderStart() {
     <div class="sm-side"><span>MACROS<b>98</b></span></div>
     <div class="sm-items">
       ${item('', 'Weekly Report', 'trophy', 'sm-weekly')}
+      ${item('#/sleep', 'Sleep', 'moon')}
+      ${item('#/grocery', 'Grocery List', 'cart')}
+      ${item('', 'Fast Food Mode', 'burger', 'sm-ff')}
       ${item('#/reminders', 'Reminders', 'bell')}
       ${item('', 'Exercise Library', 'book', 'sm-lib')}
       ${item('', 'Plate Calculator', 'plate', 'sm-plates')}
@@ -120,6 +128,7 @@ on({
   'sm-plates': (el) => { toggleStart(false); actions['plate-calc'](el); },
   'sm-howto': () => { toggleStart(false); openInstallHelp(); },
   'sm-weekly': () => { toggleStart(false); actions.weekly(); },
+  'sm-ff': () => { toggleStart(false); openFastFood(); },
   'sm-ai': () => { toggleStart(false); openAI(); },
   'sm-install': async () => {
     toggleStart(false);
@@ -161,7 +170,8 @@ document.addEventListener('click', (e) => {
 
 // Which presses get a little tick: main buttons, navigation, logging and confirmations - not every control.
 const TICK_ACTS = new Set(['nav', 'start', 'open-add', 'sug-add', 'day-set', 'pick-food', 'quick-add', 'ai-open', 'start-tpl',
-  'go-workout', 'diary-day', 'diary-today', 'scan-barcode', 'fav', 'rest-skip', 'rest-add', 'weekly', 'set-add', 'ex-menu', 'cp-cat']);
+  'go-workout', 'diary-day', 'diary-today', 'scan-barcode', 'fav', 'rest-skip', 'rest-add', 'weekly', 'set-add', 'ex-menu', 'cp-cat',
+  'rpe-set', 'rpe-ask', 'sl-bed', 'sl-up', 'sl-pick', 'sl-q', 'ff-open', 'ff-chain', 'ff-budget', 'gr-staples', 'gr-add']);
 function hapticFor(el) {
   const act = el.dataset.act;
   if (el.classList.contains('danger')) return 'warn';

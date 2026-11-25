@@ -20,6 +20,7 @@ const REM_TEXT = {
 
 export const DEFAULT_REMINDERS = () => [
   { id: 'weigh', kind: 'weigh', label: 'Weigh-in', msg: 'Step on the scale (after the bathroom, before eating) and log it.', time: '06:30', days: [...ALL_DAYS], on: true, prefer: 'before' },
+  ...SLEEP_REMINDERS().slice(0, 1),
   { id: 'bfast', kind: 'meal', label: 'Log breakfast', msg: 'Big breakfast = big day. Log it in Macros.', time: '07:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'lunch', kind: 'meal', label: 'Log lunch', msg: 'Log what you ate for lunch.', time: '12:30', days: [...ALL_DAYS], on: true, prefer: 'after' },
   { id: 'fuel', kind: 'meal', label: 'After-school fuel', msg: REM_TEXT.fuel, time: '15:15', days: [1, 2, 3, 4, 5], on: true, prefer: 'after' },
@@ -28,7 +29,17 @@ export const DEFAULT_REMINDERS = () => [
   { id: 'dinner', kind: 'meal', label: 'Log dinner', msg: REM_TEXT.dinner, time: '20:00', days: [...ALL_DAYS], on: true, prefer: 'after' },
   { id: 'night', kind: 'check', label: 'Night check-in', msg: 'How close are you to your macros? Finish protein before bed.', time: '21:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'read', kind: 'read', label: 'Reading time', msg: 'Grab your book - 20-30 minutes of reading before bed. Phone down.', time: '21:45', days: [...ALL_DAYS], on: true, prefer: 'before' },
+  ...SLEEP_REMINDERS().slice(1),
 ];
+
+// Sleep reminders follow your wake-up time and bedtime (rel + off minutes) instead of a fixed clock time
+function SLEEP_REMINDERS() {
+  return [
+    { id: 'sleeplog', kind: 'sleep', label: 'Log your sleep', msg: 'How did you sleep? Log it in Macros - one tap.', rel: 'wake', off: 30, time: '06:30', days: [...ALL_DAYS], on: true, prefer: 'before' },
+    { id: 'winddown', kind: 'sleep', label: 'Wind down', msg: 'Bed in 30 minutes. Screens off, lights low, set out tomorrow\'s stuff. Muscle gets built while you sleep.', rel: 'bed', off: -30, time: '22:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
+    { id: 'bedtime', kind: 'sleep', label: 'Bedtime', msg: 'Lights out. Tap "Going to bed" in Macros so it can track your sleep.', rel: 'bed', off: 0, time: '22:30', days: [...ALL_DAYS], on: true, prefer: 'before' },
+  ];
+}
 
 function defaults() {
   return {
@@ -59,8 +70,11 @@ function defaults() {
       dates: [], // dated exceptions: { id, label, kind: 'off' | 'early' | 'away', from, to, end? }
     },
     reminders: DEFAULT_REMINDERS(),
+    sleep: { goal: 9, log: {}, bedAt: 0 },   // log is keyed by the morning you woke up: { bed, wake, q }
+    measure: {},                             // body measurements by day: { waist, chest, arm, thigh, neck } in inches
+    grocery: [],                             // { id, name, qty, aisle, done }
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true, haptics: true, sky: { weather: true }, loc: null },
+    settings: { theme: 'dusk', themeV: 4, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true, haptics: true, sky: { weather: true }, loc: null, sleepRem: true, coach: true, trainGoal: 'muscle' },
   };
 }
 
@@ -141,12 +155,24 @@ function migrate(s) {
     }
     s.settings.remV = 2;
   }
+  // v1.14: add the sleep reminders once (log your sleep after waking, wind down + bedtime at night)
+  if (s.settings && Array.isArray(s.reminders) && !s.settings.sleepRem) {
+    const [log, ...night] = SLEEP_REMINDERS();
+    if (!s.reminders.some((r) => r.id === log.id)) {
+      const w = s.reminders.findIndex((r) => r.id === 'weigh');
+      s.reminders.splice(w >= 0 ? w + 1 : 0, 0, log);
+    }
+    for (const r of night) if (!s.reminders.some((x) => x.id === r.id)) s.reminders.push(r);
+    s.settings.sleepRem = true;
+  }
   // Fill in any keys added in newer versions without touching user data
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
   for (const k of Object.keys(d.profile)) if (s.profile[k] === undefined) s.profile[k] = d.profile[k];
   for (const k of Object.keys(d.settings)) if (s.settings[k] === undefined) s.settings[k] = d.settings[k];
   for (const k of Object.keys(d.notify)) if (s.notify[k] === undefined) s.notify[k] = d.notify[k];
   if (!s.schedule) s.schedule = d.schedule;
+  if (!s.sleep.log) s.sleep.log = {};
+  if (!Array.isArray(s.grocery)) s.grocery = [];
   if (!Array.isArray(s.schedule.dates)) s.schedule.dates = [];
   // v1.3: renamed to Macros - update the app name inside saved reminder text
   for (const r of s.reminders || []) if (typeof r.msg === 'string') r.msg = r.msg.replace(/\bTrenches\b/g, 'Macros');
@@ -202,13 +228,22 @@ export function mergeInto(into, from) {
     for (const e of d.food || []) if (!have.has(e.id)) { cur.food.push(copy(e)); n.food++; }
   }
   for (const [k, v] of Object.entries(from.weights || {})) if (into.weights[k] == null) { into.weights[k] = v; n.weights++; }
+  if (from.sleep && from.sleep.log) {
+    into.sleep = into.sleep || { goal: 9, log: {}, bedAt: 0 };
+    into.sleep.log = into.sleep.log || {};
+    for (const [k, v] of Object.entries(from.sleep.log)) if (!into.sleep.log[k]) { into.sleep.log[k] = copy(v); n.other++; }
+  }
+  for (const [k, v] of Object.entries(from.measure || {})) {
+    into.measure = into.measure || {};
+    if (!into.measure[k]) { into.measure[k] = copy(v); n.other++; }
+  }
   const addById = (name, counter = 'other', keep = () => true) => {
     into[name] = into[name] || [];
     const have = new Set(into[name].map((x) => x.id));
     for (const x of from[name] || []) if (keep(x) && !have.has(x.id)) { into[name].push(copy(x)); n[counter]++; }
   };
   addById('workouts', 'workouts', (w) => !!w.end);
-  addById('customFoods'); addById('savedMeals'); addById('customEx'); addById('templates');
+  addById('customFoods'); addById('savedMeals'); addById('customEx'); addById('templates'); addById('grocery');
   if (from.schedule && into.schedule) {
     into.schedule.dates = into.schedule.dates || [];
     const have = new Set(into.schedule.dates.map((d) => d.id));
