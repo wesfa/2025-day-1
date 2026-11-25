@@ -6,7 +6,7 @@ moderate chest, a narrow waist with a 6-pack, sweeping quads with a teardrop and
 is odd so there is a true centre column, and the art is mirror-symmetric (write_js checks it). In the app every muscle gets a
 light outline and the seams between muscles are drawn light, like an anatomy chart.
 
-Letters: H head, X skin (hands, knees, feet), P shorts, N neck, T traps, S front/side delts, R rear delts,
+Letters: H head, X skin (hands, knees, feet), P shorts (unused), N neck, T traps, S front/side delts, R rear delts,
 C chest, B biceps, I triceps, F forearms, A abs, O obliques/serratus, W lats, U upper back, E lower back,
 G glutes, Q quads, M hamstrings, D adductors, L calves. A lowercase letter is the same muscle; it only adds
 a seam (ab blocks, sternum, spine, calf heads...).
@@ -138,10 +138,14 @@ def front():
     fill(g, 'C', lambda x, y: torso(x, y) and y < pec_bottom(x))
     fill(g, 'A', lambda x, y: 18.4 <= x and 22.8 <= y < 36.4)
     fill(g, 'a', lambda x, y: 18.4 <= x and int(y) in (25, 28, 31))  # a 6-pack: three seams
-    seam_centre(g, 16, 36)  # sternum + linea alba
+    # below the navel the lower abs narrow to a V at the groin; the hips and upper thighs sit either side
+    vline = lambda y: 18.4 + (y - 36.4) * 0.9
+    fill(g, 'Q', lambda x, y: side(y) <= x and 36.4 <= y < 41.0)
+    fill(g, 'A', lambda x, y: 36.4 <= y < 41.0 and x >= vline(y))
+    seam_centre(g, 16, 41)  # sternum + linea alba down to the V
     fill(g, 'S', DELT)
-    fill(g, 'P', lambda x, y: side(y) <= x and 36.4 <= y < 41.0)
-    fill(g, 'D', lambda x, y: thigh(x, y) and x >= 19.2 + (y - 41) * 0.25)  # adductors: the inner-thigh wedge
+    # adductors: the inner-thigh wedge just below the V, so the V lines run on down the inner thigh
+    fill(g, 'D', lambda x, y: thigh(x, y) and x >= 19.2 + (y - 41) * 0.25)
     # the teardrop (vastus medialis) above the knee
     tear = lambda x, y: seg(19.6, 51.0, 18.4, 54.6, 0.45)(x, y) or seg(18.4, 54.6, 19.0, 58.0, 0.45)(x, y)
     fill(g, 'q', lambda x, y: thigh(x, y) and tear(x, y))
@@ -157,12 +161,14 @@ def back():
     fill(g, 'U', lambda x, y: torso(x, y) and y < 30.5)  # rhomboids / teres, between traps and lats
     fill(g, 'W', lat)
     fill(g, 'E', lambda x, y: torso(x, y) and y >= 29 and not lat(x, y))  # erectors
+    fill(g, 'O', lambda x, y: side(y) <= x < 19.4 and 36.4 <= y < 37.8)
     fill(g, 'T', trap)
     fill(g, 'R', DELT)
+    # glutes: glute med on the upper outer hip, two round glute max below with the cleft between
     glute_max = ell(19.6, 42.2, 4.3, 4.4)
-    fill(g, 'G', lambda x, y: glute_max(x, y) and 37.8 <= y < 46.0)
+    fill(g, 'G', lambda x, y: (side(y) <= x and 37.8 <= y < 41.0) or (glute_max(x, y) and 37.8 <= y < 46.0))
+    fill(g, 'g', lambda x, y: side(y) <= x < 19.0 and 37.8 <= y < 41.0 and ell(19.6, 42.2, 5.0, 5.1)(x, y) and not glute_max(x, y))
     seam_centre(g, 16, 46)  # spine + cleft
-    fill(g, 'P', lambda x, y: side(y) <= x and 36.4 <= y < 41.0)  # the same shorts as the front
     fill(g, 'm', lambda x, y: thigh(x, y) and y >= 46.5 and seg(19.0, 47.5, 18.8, 56.5, 0.4)(x, y))  # hamstring split
     fill(g, 'l', lambda x, y: calf(x, y) and seg(18.6, 62.0, 18.6, 68.0, 0.4)(x, y))  # two calf heads
     return g
