@@ -11,15 +11,23 @@ const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 export const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 
+const LIFT_DAYS = [1, 2, 4, 5];
+const REM_TEXT = {
+  fuel: 'Snack time: carbs + protein (sandwich, shake, fruit). Lifting today? This is your fuel. Log it.',
+  gym: 'Gym right after school, or plan for 6-7 PM. Open today\'s workout.',
+  dinner: 'Log dinner (and anything after the gym). Check your protein.',
+};
+
 export const DEFAULT_REMINDERS = () => [
   { id: 'weigh', kind: 'weigh', label: 'Weigh-in', msg: 'Step on the scale (after the bathroom, before eating) and log it.', time: '06:30', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'bfast', kind: 'meal', label: 'Log breakfast', msg: 'Big breakfast = big day. Log it in Macros.', time: '07:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'lunch', kind: 'meal', label: 'Log lunch', msg: 'Log what you ate for lunch.', time: '12:30', days: [...ALL_DAYS], on: true, prefer: 'after' },
-  { id: 'fuel', kind: 'meal', label: 'Pre-practice fuel', msg: 'Eat carbs + protein before practice/lift and log it.', time: '15:15', days: [1, 2, 3, 4, 5], on: true, prefer: 'after' },
-  { id: 'dinner', kind: 'meal', label: 'Log dinner', msg: 'Log dinner and check your protein.', time: '19:00', days: [...ALL_DAYS], on: true, prefer: 'after' },
+  { id: 'fuel', kind: 'meal', label: 'After-school fuel', msg: REM_TEXT.fuel, time: '15:15', days: [1, 2, 3, 4, 5], on: true, prefer: 'after' },
+  // Lands with after-school fuel (one notification); its days follow the lift days in Control Panel
+  { id: 'gym', kind: 'gym', label: 'Lift day', msg: REM_TEXT.gym, time: '15:15', days: [...LIFT_DAYS], on: true, prefer: 'after' },
+  { id: 'dinner', kind: 'meal', label: 'Log dinner', msg: REM_TEXT.dinner, time: '20:00', days: [...ALL_DAYS], on: true, prefer: 'after' },
   { id: 'night', kind: 'check', label: 'Night check-in', msg: 'How close are you to your macros? Finish protein before bed.', time: '21:00', days: [...ALL_DAYS], on: true, prefer: 'before' },
   { id: 'read', kind: 'read', label: 'Reading time', msg: 'Grab your book - 20-30 minutes of reading before bed. Phone down.', time: '21:45', days: [...ALL_DAYS], on: true, prefer: 'before' },
-  { id: 'gym', kind: 'gym', label: 'Gym time', msg: 'Time to train. Open today\'s workout.', time: '16:00', days: [1, 2, 4, 5], on: false, prefer: 'after' },
 ];
 
 function defaults() {
@@ -52,7 +60,7 @@ function defaults() {
     },
     reminders: DEFAULT_REMINDERS(),
     notify: { method: 'none', topic: '', windowH: 48, sent: {}, lastSync: 0, until: 0 },
-    settings: { theme: 'meadow', themeV: 3, readAdded: true, dayTargets: true, liftDays: [1, 2, 4, 5], sound: true, lastBackup: 0, restAuto: true },
+    settings: { theme: 'meadow', themeV: 3, readAdded: true, remV: 2, dayTargets: true, liftDays: [...LIFT_DAYS], sound: true, lastBackup: 0, restAuto: true },
   };
 }
 
@@ -104,6 +112,29 @@ function migrate(s) {
       s.reminders.splice(night >= 0 ? night + 1 : s.reminders.length, 0, read);
     }
     s.settings.readAdded = true;
+  }
+  // v1.8: no practice - gym is right after school or 6-7 PM. Update reminders still on their old defaults
+  // (anything already changed by hand is left alone).
+  if (s.settings && Array.isArray(s.reminders) && !(s.settings.remV >= 2)) {
+    const rem = (id) => s.reminders.find((r) => r.id === id);
+    const fuel = rem('fuel');
+    if (fuel && fuel.label === 'Pre-practice fuel') {
+      fuel.label = 'After-school fuel';
+      if (fuel.msg === 'Eat carbs + protein before practice/lift and log it.') fuel.msg = REM_TEXT.fuel;
+    }
+    const gym = rem('gym');
+    if (gym && !gym.on && gym.time === '16:00' && gym.label === 'Gym time') {
+      Object.assign(gym, { on: true, time: '15:15', label: 'Lift day', msg: REM_TEXT.gym, days: [...(s.settings.liftDays || LIFT_DAYS)] });
+      // list it right under after-school fuel, since they go off together
+      const at = s.reminders.indexOf(fuel);
+      if (at >= 0) { s.reminders.splice(s.reminders.indexOf(gym), 1); s.reminders.splice(s.reminders.indexOf(fuel) + 1, 0, gym); }
+    }
+    const dinner = rem('dinner');
+    if (dinner && dinner.time === '19:00') {
+      dinner.time = '20:00';
+      if (dinner.msg === 'Log dinner and check your protein.') dinner.msg = REM_TEXT.dinner;
+    }
+    s.settings.remV = 2;
   }
   // Fill in any keys added in newer versions without touching user data
   for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
@@ -271,7 +302,7 @@ export function currentWeight() {
 
 // ---------- Targets ----------
 // Training day or rest day? A finished (or in-progress) workout always makes it a training day;
-// otherwise a choice made on Today wins, otherwise the planned lift/practice days decide.
+// otherwise a choice made on Today wins, otherwise the planned lift days decide.
 export function dayType(key = dayKey()) {
   if (S.workouts.some((w) => w.date === key)) return 'train';
   const d = S.days[key];

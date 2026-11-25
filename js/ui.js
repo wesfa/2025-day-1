@@ -36,9 +36,10 @@ export function group(label, body, { cls = '', right = '' } = {}) {
 }
 
 // Segmented Win95 progress bar
-export function bar(value, max, { cls = '', label = '' } = {}) {
+// cap: going past max is a problem (turns red). Off for goals where more is fine (fiber, potassium).
+export function bar(value, max, { cls = '', label = '', cap = true } = {}) {
   const pct = max > 0 ? clamp((value / max) * 100, 0, 100) : 0;
-  const over = max > 0 && value > max * 1.05;
+  const over = cap && max > 0 && value > max * 1.05;
   return `<div class="progress ${cls} ${over ? 'over' : ''}" role="progressbar" aria-valuenow="${r0(value)}" aria-valuemax="${r0(max)}" ${label ? `aria-label="${esc(label)}"` : ''}><div class="fill" style="width:${pct}%"></div></div>`;
 }
 

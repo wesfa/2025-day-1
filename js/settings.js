@@ -11,7 +11,7 @@ import { aiSettingsGroup } from './ai.js';
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.8.0';
 
 export const THEMES = {
   meadow: 'Meadow',
@@ -73,7 +73,7 @@ export function renderSettings() {
         <div class="stat sunken"><span>Sodium (max)</span><b class="vt">${fmtN(tg.na - tg.naExtra)}mg</b></div>
         <div class="stat sunken"><span>Potassium</span><b class="vt">${fmtN(tg.pot)}mg</b></div>
       </div>
-      <p class="muted small">How it's figured: maintenance ~${calc.maintenance} kcal (${esc((PHASES[p.phase] || PHASES.off).label.toLowerCase())}) ${calc.delta >= 0 ? '+' : '-'} ${Math.abs(calc.delta)} to ${calc.dir > 0 ? 'gain' : calc.dir < 0 ? 'lose' : 'hold'} ${p.rate} lb/week. Protein ~1g per lb, fat 25%, the rest carbs - linemen need carbs to fuel practice. Fiber and potassium are daily goals for your age; sodium is a max, raised by 1,000mg on training days to replace sweat. Auto mode updates as your weight changes.</p>
+      <p class="muted small">How it's figured: maintenance ~${calc.maintenance} kcal (${esc((PHASES[p.phase] || PHASES.off).label.toLowerCase())}) ${calc.delta >= 0 ? '+' : '-'} ${Math.abs(calc.delta)} to ${calc.dir > 0 ? 'gain' : calc.dir < 0 ? 'lose' : 'hold'} ${p.rate} lb/week. Protein ~1g per lb, fat 25%, the rest carbs - linemen need carbs to fuel training. Fiber and potassium are daily goals for your age; sodium is a max, raised by 1,000mg on training days to replace sweat. Auto mode updates as your weight changes.</p>
       <label class="check"><input type="checkbox" data-change="t-auto" ${auto ? 'checked' : ''}><span>Auto-calculate (recommended)</span></label>
       ${auto ? '' : `<form id="tg" onsubmit="return false"><div class="grid2">
         ${field('Calories', numInput('cal', S.targets.cal))}${field('Protein g', numInput('p', S.targets.p))}
@@ -88,12 +88,12 @@ export function renderSettings() {
       const days = S.settings.liftDays || [];
       return `
       <label class="check"><input type="checkbox" data-change="set-daytargets" ${S.settings.dayTargets ? 'checked' : ''}><span>Eat more on training days, less on rest days</span></label>
-      ${field('My lift / practice days', dayPicker('liftDays', days).replace(/name="liftDays"/g, 'name="liftDays" data-change="set-liftdays"'))}
+      ${field('My lift days', dayPicker('liftDays', days).replace(/name="liftDays"/g, 'name="liftDays" data-change="set-liftdays"'))}
       ${sp ? `<div class="split-grid">
           <div class="stat sunken"><span>Training day (${sp.days}/wk)</span><b class="vt">${tg.avgCal + sp.up}</b><small>+${sp.up} kcal · ${tg.avgC + Math.round(sp.up / 4 / 5) * 5}g carbs</small></div>
           <div class="stat sunken"><span>Rest day (${7 - sp.days}/wk)</span><b class="vt">${tg.avgCal - sp.down}</b><small>-${sp.down} kcal · ${Math.max(0, tg.avgC - Math.round(sp.down / 4 / 5) * 5)}g carbs</small></div>
         </div>
-        <p class="muted small">Same weekly total as eating the average every day - just moved toward the days you train. The extra is carbs to fuel the session; protein and fat stay the same. Finishing a workout makes that day a training day automatically, and you can switch any day on Today.</p>`
+        <p class="muted small">Same weekly total as eating the average every day - just moved toward the days you train. The extra is carbs to fuel the session; protein and fat stay the same. Finishing a workout makes that day a training day automatically, and you can switch any day on Today. The Lift day reminder goes off on these days.</p>`
       : `<p class="muted small">${S.settings.dayTargets ? 'Pick at least one (and not all seven) training days to split targets.' : 'Off: every day uses the average target.'}</p>`}`;
     })())}
 
@@ -153,6 +153,9 @@ on({
   'set-daytargets': (el) => { S.settings.dayTargets = el.checked; save(); rerender(); },
   'set-liftdays': () => {
     S.settings.liftDays = [...document.querySelectorAll('input[name="liftDays"]:checked')].map((x) => Number(x.value)).sort();
+    // the Lift day reminder follows these days
+    const gym = S.reminders.find((r) => r.id === 'gym');
+    if (gym && S.settings.liftDays.length) { gym.days = [...S.settings.liftDays]; schedChanged(); }
     save(); rerender();
   },
   'set-restauto': (el) => { S.settings.restAuto = el.checked; save(); },
@@ -324,7 +327,7 @@ export function renderReminders() {
         ${field('Bedtime', `<input class="inp" type="time" value="${sch.sleep}" data-change="sch-sleep">`)}
       </div>`)}
     ${group('Days off & trips', `
-      <p class="muted small">No school skips school blocks. Early dismissal ends school early. Out of town skips school and work and pauses weigh-in, gym and pre-practice reminders (meal reminders keep going).</p>
+      <p class="muted small">No school skips school blocks. Early dismissal ends school early. Out of town skips school and work and pauses weigh-in, gym and after-school fuel reminders (meal reminders keep going).</p>
       ${dateRows || '<p class="empty">No upcoming days off.</p>'}
       ${past ? `<p class="muted small">${past} past date${past > 1 ? 's' : ''} hidden.</p>` : ''}
       <div class="btn-row">${btn('+ Add dates', 'date-add')}${btn('Import schedule file', 'sched-import', { ico: 'floppy' })}</div>`)}

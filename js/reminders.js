@@ -12,7 +12,7 @@ export const DATE_KINDS = {
   early: 'Early dismissal',
   away: 'Out of town',
 };
-// While away: no school or work, and the scale / gym / pre-practice reminders pause. Meal logging keeps going.
+// While away: no school or work, and the scale / gym / after-school fuel reminders pause. Meal logging keeps going.
 const PAUSED_WHEN_AWAY = new Set(['weigh', 'gym']);
 const pausedAway = (rem) => PAUSED_WHEN_AWAY.has(rem.kind) || rem.id === 'fuel';
 

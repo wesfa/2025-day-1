@@ -10,12 +10,12 @@ It installs to your phone's home screen like a real app, works offline, and upda
 
 | Screen | Features |
 | --- | --- |
-| **Today** | Daily weigh-in box, calories/protein/carbs/fat progress bars, fiber/sodium/potassium tracker, one-tap meal logging, "Coach says" food suggestions to close your protein/calorie gap, today's workout |
+| **Today** | Daily weigh-in box, calories/protein/carbs/fat progress bars with a smaller fiber/sodium/potassium strip underneath, one-tap meal logging, "Coach says" food suggestions to close your protein/calorie gap, today's workout |
 | **AI Food Scanner** | Snap a photo and/or describe a meal; Claude lists each item with estimated calories, protein, carbs and fat. You review and edit before adding. Needs your own Claude API key |
 | **Food** | Breakfast/Lunch/Dinner/Snacks diary, 140+ built-in foods (incl. fast food), online search (Open Food Facts), barcode scanner, Recent, Favorites, saved meals, copy yesterday's meal, quick add, custom foods |
 | **Gym** | 4-day DE/DT off-season program (power cleans, squats, bench, get-offs, hand fighting, neck work…), live workout logger (sets × reps × weight), "last time" numbers, progressive-overload suggestions, auto rest timer, PR detection, coaching cues, plate calculator, editable program |
 | **Weight** | Daily log, 7-day average, pixel chart, goal progress, weekly trend, projected goal date |
-| **Reminders** | Weekly school/work blocks plus dated exceptions (no school, early dismissal, out of town), reminders that move around them, a 7-day preview, schedule-file import, real push notifications via the free **ntfy** app, or a calendar file |
+| **Reminders** | Weekly school/work blocks plus dated exceptions (no school, early dismissal, out of town), reminders that move around them (after-school fuel, plus a Lift day reminder on your lift days), a 7-day preview, schedule-file import, real push notifications via the free **ntfy** app, or a calendar file |
 | **Gridlock** | An original 8x8 block-puzzle game (Start menu or Today): drag three pieces at a time onto the grid, clear full rows and columns, chain clears for combos, and empty the board for a bonus. Saves your game and best score |
 | **Control Panel** | Profile, auto-calculated macro targets (or enter your own), 7 color schemes (default **Meadow**: pixel hill-and-sky wallpaper with drifting clouds and glossy blue windows; **Island**: pixel beach with twinkling water), backup export/import |
 

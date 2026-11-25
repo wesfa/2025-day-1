@@ -4,6 +4,20 @@ import { S, save, day, peekDay, totals, mealTotals, getFood, addEntry, recentFoo
 const MICROS = [['fib', 'Fiber', 'g'], ['na', 'Sodium', 'mg'], ['pot', 'Potassium', 'mg']];
 const known = (v) => typeof v === 'number' && Number.isFinite(v);
 const optNum = (v) => (v === '' || v == null || !Number.isFinite(parseFloat(v)) ? null : parseFloat(v));
+
+// Fiber / sodium / potassium: a small strip under protein / carbs / fat (they matter, just less).
+// Fiber and potassium are goals (going past is fine); sodium is a max. One short note only when needed.
+export function microStrip(t, tg) {
+  const cell = ([m, l, u]) => `<div class="mi">
+      <span class="mi-l">${m === 'na' ? 'Sodium (max)' : l}</span>
+      ${bar(t[m], tg[m], { cls: 'mini m-' + m, cap: m === 'na', label: l })}
+      <span class="mi-v">${u === 'g' ? r0(t[m]) : fmt(t[m])}/${fmt(tg[m])}${u}</span>
+    </div>`;
+  const notes = [];
+  if (t.na > tg.na) notes.push(`Sodium ${fmt(t.na - tg.na)}mg over the limit`);
+  if (t.unknown) notes.push(`${t.unknown} item${t.unknown > 1 ? 's' : ''} missing fiber/sodium/potassium info`);
+  return `<div class="micro-strip">${MICROS.map(cell).join('')}</div>${notes.length ? `<p class="micro-note">${notes.join(' · ')}</p>` : ''}`;
+}
 import { FOODS, FOOD_CATEGORIES } from './foods.js';
 import { dayKey, addDays, prettyDay, esc, r0, r1, num, fmt, uid, buzz } from './util.js';
 import { win, group, bar, btn, field, numInput, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, promptBox, formData } from './ui.js';
@@ -63,10 +77,7 @@ export function renderFood() {
       <div class="mac-grid">
         ${['p', 'c', 'f'].map((m) => `<div><span class="mac-l">${{ p: 'Protein', c: 'Carbs', f: 'Fat' }[m]}</span>${bar(t[m], tg[m], { cls: 'thin m-' + m })}<span class="mac-v">${r0(t[m])}/${tg[m]}g</span></div>`).join('')}
       </div>
-      <div class="mac-grid">
-        ${MICROS.map(([m, l, u]) => `<div><span class="mac-l">${l}</span>${bar(t[m], tg[m], { cls: 'thin m-' + m })}<span class="mac-v">${fmt(t[m])}/${fmt(tg[m])}${u}</span></div>`).join('')}
-      </div>
-      ${t.unknown ? `<p class="muted small micro-note">${t.unknown} item${t.unknown > 1 ? 's are' : ' is'} missing fiber/sodium/potassium info.</p>` : ''}
+      ${microStrip(t, tg)}
     </div>
     ${meals}
     <div class="btn-row">${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}${btn('Quick add calories', 'quick-add', { data: `data-meal="${mealForNow()}"` })}${btn('My foods', 'my-foods')}</div>

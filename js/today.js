@@ -4,7 +4,7 @@ import { FOOD_BY_ID } from './foods.js';
 import { dayKey, esc, r0, r1, fmt, longDate, buzz, isStandalone, fmtTime } from './util.js';
 import { win, group, bar, btn, on, rerender, toast } from './ui.js';
 import { icon } from './icons.js';
-import { openAddFood, openFoodDetail, mealForNow } from './food.js';
+import { openAddFood, openFoodDetail, mealForNow, microStrip } from './food.js';
 import { logWeight, weightStats } from './weight.js';
 import { dueNow, dateRule, DATE_KINDS } from './reminders.js';
 import './ai.js';
@@ -42,32 +42,6 @@ function suggestions(left) {
     out.push(...picks.slice(0, 2));
   }
   return out.slice(0, 4);
-}
-
-// Fiber + potassium are goals to reach; sodium is a cap (higher on training days for sweat losses)
-export function microPanel(t, tg) {
-  const fibLeft = tg.fib - t.fib;
-  const potLeft = tg.pot - t.pot;
-  const naLeft = tg.na - t.na;
-  return `
-    <div class="macros">
-      <div class="macro">
-        <div class="macro-head"><b>Fiber</b><span><b class="vt">${r0(t.fib)}</b>/${tg.fib}g</span></div>
-        ${bar(t.fib, tg.fib, { cls: 'm-fib', label: 'Fiber' })}
-        <div class="muted small">${fibLeft > 0 ? `${r0(fibLeft)}g to go - fruit, veggies, beans, oats` : 'Hit it!'}</div>
-      </div>
-      <div class="macro">
-        <div class="macro-head"><b>Sodium</b><span><b class="vt">${fmt(t.na)}</b>/${fmt(tg.na)}mg</span></div>
-        ${bar(t.na, tg.na, { cls: 'm-na', label: 'Sodium' })}
-        <div class="muted small">${naLeft >= 0 ? `${fmt(naLeft)}mg under the limit` : `${fmt(-naLeft)}mg over the limit`}${tg.naExtra ? ` (includes +${fmt(tg.naExtra)}mg for sweat on a training day)` : ''}</div>
-      </div>
-      <div class="macro">
-        <div class="macro-head"><b>Potassium</b><span><b class="vt">${fmt(t.pot)}</b>/${fmt(tg.pot)}mg</span></div>
-        ${bar(t.pot, tg.pot, { cls: 'm-pot', label: 'Potassium' })}
-        <div class="muted small">${potLeft > 0 ? `${fmt(potLeft)}mg to go - potatoes, bananas, milk, beans` : 'Hit it!'}</div>
-      </div>
-    </div>
-    ${t.unknown ? `<p class="muted small">${t.unknown} item${t.unknown > 1 ? 's' : ''} today ${t.unknown > 1 ? "don't" : "doesn't"} have fiber/sodium/potassium info (logged before this update, a quick add, or a custom food without them), so the real totals are higher.</p>` : ''}`;
 }
 
 export function renderToday() {
@@ -143,13 +117,14 @@ export function renderToday() {
       ${bar(t.cal, tg.cal, { label: 'Calories' })}
     </div>
     <div class="macros">
-      ${[['p', 'Protein', 'Builds muscle'], ['c', 'Carbs', 'Fuel for practice'], ['f', 'Fat', 'Hormones + energy']].map(([m, l]) => `
+      ${[['p', 'Protein', 'Builds muscle'], ['c', 'Carbs', 'Fuel for lifting'], ['f', 'Fat', 'Hormones + energy']].map(([m, l]) => `
         <div class="macro">
           <div class="macro-head"><b>${l}</b><span><b class="vt">${r0(t[m])}</b>/${tg[m]}g</span></div>
           ${bar(t[m], tg[m], { cls: 'm-' + m, label: l })}
           <div class="muted small">${left[m] > 0 ? `${r0(left[m])}g to go` : 'Hit it!'}</div>
         </div>`).join('')}
     </div>
+    ${microStrip(t, tg)}
   `, { ico: 'calendar' })}
 
   ${win('Log Food', `
@@ -159,8 +134,6 @@ export function renderToday() {
       <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · ${r0(f.p)}g P</small><b>+</b></button>`).join('')}</div>` : ''}
     ${left.cal < -300 && tg.dir < 0 ? '<p class="muted small">Over today. No stress - one day doesn\'t matter, the weekly average does.</p>' : ''}
   `, { ico: 'burger' })}
-
-  ${win('Fiber, Sodium & Potassium', microPanel(t, tg), { ico: 'leaf' })}
 
   ${win('Training', train, { ico: 'dumbbell' })}
 
