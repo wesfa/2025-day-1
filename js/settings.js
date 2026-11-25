@@ -1,7 +1,7 @@
 // Settings, profile, targets, reminders + notifications, backup, install help.
 import { S, save, targets, daySplit, currentWeight, replaceState, resetState, DEFAULT_REMINDERS, mergeInto, normalize, summarize } from './store.js';
 import { listSnapshots } from './vault.js';
-import { calcTargets, PHASES } from './calc.js';
+import { calcTargets, microTargets, PHASES } from './calc.js';
 import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText } from './reminders.js';
 import { dayKey, addDays, parseDay, prettyDay, shortDate, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid, isStandalone, toMin } from './util.js';
 import { win, group, btn, field, numInput, select, dayPicker, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, formData } from './ui.js';
@@ -9,7 +9,9 @@ import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
 import { aiSettingsGroup } from './ai.js';
 
-export const APP_VERSION = '1.6.0';
+const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
+
+export const APP_VERSION = '1.7.0';
 
 export const THEMES = {
   meadow: 'Meadow',
@@ -67,14 +69,17 @@ export function renderSettings() {
         <div class="stat sunken"><span>Protein</span><b class="vt">${tg.p}g</b></div>
         <div class="stat sunken"><span>Carbs</span><b class="vt">${tg.avgC}g</b></div>
         <div class="stat sunken"><span>Fat</span><b class="vt">${tg.f}g</b></div>
-        <div class="stat sunken"><span>Water</span><b class="vt">${tg.water}oz</b></div>
+        <div class="stat sunken"><span>Fiber</span><b class="vt">${tg.fib}g</b></div>
+        <div class="stat sunken"><span>Sodium (max)</span><b class="vt">${fmtN(tg.na - tg.naExtra)}mg</b></div>
+        <div class="stat sunken"><span>Potassium</span><b class="vt">${fmtN(tg.pot)}mg</b></div>
       </div>
-      <p class="muted small">How it's figured: maintenance ~${calc.maintenance} kcal (${esc((PHASES[p.phase] || PHASES.off).label.toLowerCase())}) ${calc.delta >= 0 ? '+' : '-'} ${Math.abs(calc.delta)} to ${calc.dir > 0 ? 'gain' : calc.dir < 0 ? 'lose' : 'hold'} ${p.rate} lb/week. Protein ~1g per lb, fat 25%, the rest carbs - linemen need carbs to fuel practice. Auto mode updates as your weight changes.</p>
+      <p class="muted small">How it's figured: maintenance ~${calc.maintenance} kcal (${esc((PHASES[p.phase] || PHASES.off).label.toLowerCase())}) ${calc.delta >= 0 ? '+' : '-'} ${Math.abs(calc.delta)} to ${calc.dir > 0 ? 'gain' : calc.dir < 0 ? 'lose' : 'hold'} ${p.rate} lb/week. Protein ~1g per lb, fat 25%, the rest carbs - linemen need carbs to fuel practice. Fiber and potassium are daily goals for your age; sodium is a max, raised by 1,000mg on training days to replace sweat. Auto mode updates as your weight changes.</p>
       <label class="check"><input type="checkbox" data-change="t-auto" ${auto ? 'checked' : ''}><span>Auto-calculate (recommended)</span></label>
       ${auto ? '' : `<form id="tg" onsubmit="return false"><div class="grid2">
         ${field('Calories', numInput('cal', S.targets.cal))}${field('Protein g', numInput('p', S.targets.p))}
         ${field('Carbs g', numInput('c', S.targets.c))}${field('Fat g', numInput('f', S.targets.f))}
-        ${field('Water oz', numInput('water', S.targets.water))}</div>
+        ${field('Fiber g', numInput('fib', S.targets.fib ?? tg.fib))}${field('Sodium max mg', numInput('na', S.targets.na ?? (tg.na - tg.naExtra)))}
+        ${field('Potassium mg', numInput('pot', S.targets.pot ?? tg.pot))}</div>
         <div class="btn-row">${btn('Save targets', 't-save', { cls: 'primary grow', type: 'submit' })}</div></form>`}
       <p class="muted small">Coach or nutritionist gave you numbers? Turn off auto and type them in.</p>`)}
 
@@ -131,12 +136,16 @@ on({
   },
   't-auto': (el) => {
     S.targets.auto = el.checked;
-    if (!el.checked) { const t = calcTargets(S.profile, currentWeight()); Object.assign(S.targets, { cal: t.cal, p: t.p, c: t.c, f: t.f, water: t.water }); }
+    if (!el.checked) {
+      const t = calcTargets(S.profile, currentWeight());
+      const mt = microTargets(S.profile, false);
+      Object.assign(S.targets, { cal: t.cal, p: t.p, c: t.c, f: t.f, fib: mt.fib, na: mt.na, pot: mt.pot });
+    }
     save(); rerender();
   },
   't-save': () => {
     const v = formData(document.getElementById('tg'));
-    Object.assign(S.targets, { cal: num(v.cal), p: num(v.p), c: num(v.c), f: num(v.f), water: num(v.water) });
+    Object.assign(S.targets, { cal: num(v.cal), p: num(v.p), c: num(v.c), f: num(v.f), fib: num(v.fib), na: num(v.na), pot: num(v.pot) });
     save(); toast('Targets saved'); rerender();
   },
   theme: (el) => { S.settings.theme = el.value; save(); applyTheme(); rerender(); },

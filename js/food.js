@@ -1,5 +1,9 @@
 // Food diary + add-food flows.
 import { S, save, day, peekDay, totals, mealTotals, getFood, addEntry, recentFoods, targets, MEALS } from './store.js';
+
+const MICROS = [['fib', 'Fiber', 'g'], ['na', 'Sodium', 'mg'], ['pot', 'Potassium', 'mg']];
+const known = (v) => typeof v === 'number' && Number.isFinite(v);
+const optNum = (v) => (v === '' || v == null || !Number.isFinite(parseFloat(v)) ? null : parseFloat(v));
 import { FOODS, FOOD_CATEGORIES } from './foods.js';
 import { dayKey, addDays, prettyDay, esc, r0, r1, num, fmt, uid, buzz } from './util.js';
 import { win, group, bar, btn, field, numInput, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, promptBox, formData } from './ui.js';
@@ -59,6 +63,10 @@ export function renderFood() {
       <div class="mac-grid">
         ${['p', 'c', 'f'].map((m) => `<div><span class="mac-l">${{ p: 'Protein', c: 'Carbs', f: 'Fat' }[m]}</span>${bar(t[m], tg[m], { cls: 'thin m-' + m })}<span class="mac-v">${r0(t[m])}/${tg[m]}g</span></div>`).join('')}
       </div>
+      <div class="mac-grid">
+        ${MICROS.map(([m, l, u]) => `<div><span class="mac-l">${l}</span>${bar(t[m], tg[m], { cls: 'thin m-' + m })}<span class="mac-v">${fmt(t[m])}/${fmt(tg[m])}${u}</span></div>`).join('')}
+      </div>
+      ${t.unknown ? `<p class="muted small micro-note">${t.unknown} item${t.unknown > 1 ? 's are' : ' is'} missing fiber/sodium/potassium info.</p>` : ''}
     </div>
     ${meals}
     <div class="btn-row">${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}${btn('Quick add calories', 'quick-add', { data: `data-meal="${mealForNow()}"` })}${btn('My foods', 'my-foods')}</div>
@@ -81,12 +89,12 @@ on({
     const items = peekDay(view.date).food.filter((e) => e.meal === meal);
     const name = await promptBox({ title: 'Save meal', label: 'Name this meal (e.g. "Usual breakfast")', value: `My ${meal.toLowerCase()}` });
     if (!name) return;
-    S.savedMeals.push({ id: uid(), name: name.trim(), items: items.map(({ fid, name: n, serving, cal, p, c, f, qty }) => ({ fid, name: n, serving, cal, p, c, f, qty })) });
+    S.savedMeals.push({ id: uid(), name: name.trim(), items: items.map(({ fid, name: n, serving, cal, p, c, f, fib, na, pot, qty }) => ({ fid, name: n, serving, cal, p, c, f, fib, na, pot, qty })) });
     save(); toast('Meal saved - find it under "Meals" when adding food'); rerender();
   },
   'edit-entry': (el) => {
     const e = peekDay(view.date).food.find((x) => x.id === el.dataset.id);
-    if (e) openFoodDetail({ id: e.fid, name: e.name, serving: e.serving, cal: e.cal, p: e.p, c: e.c, f: e.f, g: (getFood(e.fid) || {}).g }, { date: view.date, meal: e.meal, entry: e });
+    if (e) openFoodDetail({ id: e.fid, name: e.name, serving: e.serving, cal: e.cal, p: e.p, c: e.c, f: e.f, fib: e.fib, na: e.na, pot: e.pot, g: (getFood(e.fid) || {}).g }, { date: view.date, meal: e.meal, entry: e });
   },
   'quick-add': (el) => openQuickAdd(el.dataset.meal || mealForNow(), view.date),
   'my-foods': () => { af.tab = 'mine'; openAddFood(mealForNow(), view.date); },
@@ -274,7 +282,8 @@ function renderFoodDetail() {
 function fdMacros() {
   const f = fd.food; const q = fd.qty;
   return `<div class="big-cal"><b class="vt">${fmt(f.cal * q)}</b> kcal</div>
-    <div class="mac3"><span>Protein<b class="vt">${r1(f.p * q)}g</b></span><span>Carbs<b class="vt">${r1(f.c * q)}g</b></span><span>Fat<b class="vt">${r1(f.f * q)}g</b></span></div>`;
+    <div class="mac3"><span>Protein<b class="vt">${r1(f.p * q)}g</b></span><span>Carbs<b class="vt">${r1(f.c * q)}g</b></span><span>Fat<b class="vt">${r1(f.f * q)}g</b></span></div>
+    <div class="mac3 micro3">${MICROS.map(([m, l, u]) => `<span>${l}<b class="vt">${known(f[m]) ? (u === 'g' ? r1(f[m] * q) : fmt(f[m] * q)) + u : '-'}</b></span>`).join('')}</div>`;
 }
 
 on({
@@ -338,6 +347,9 @@ export function openQuickAdd(meal, date) {
         ${field('Protein g', numInput('p', '', { placeholder: '0' }))}
         ${field('Carbs g', numInput('c', '', { placeholder: '0' }))}
         ${field('Fat g', numInput('f', '', { placeholder: '0' }))}
+        ${field('Fiber g', numInput('fib', '', { placeholder: 'optional' }))}
+        ${field('Sodium mg', numInput('na', '', { placeholder: 'optional' }))}
+        ${field('Potassium mg', numInput('pot', '', { placeholder: 'optional' }))}
       </div>
       ${field('Meal', select('meal', MEALS.map((m) => [m, m]), meal))}
       <div class="btn-row">${btn('Add', 'qa-save', { cls: 'primary grow', type: 'submit', data: `data-date="${date}"` })}${btn('Cancel', 'modal-close')}</div>
@@ -354,6 +366,9 @@ export function openCreateFood(pre = {}, after) {
         ${field('Protein g', numInput('p', pre.p ?? ''))}
         ${field('Carbs g', numInput('c', pre.c ?? ''))}
         ${field('Fat g', numInput('f', pre.f ?? ''))}
+        ${field('Fiber g', numInput('fib', pre.fib ?? '', { placeholder: 'optional' }))}
+        ${field('Sodium mg', numInput('na', pre.na ?? '', { placeholder: 'optional' }))}
+        ${field('Potassium mg', numInput('pot', pre.pot ?? '', { placeholder: 'optional' }))}
       </div>
       <div class="btn-row">${btn('Save food', 'cf-save', { cls: 'primary grow', type: 'submit' })}${btn('Cancel', 'modal-close')}</div>
     </form>`, { cls: 'dialog', close: 'modal-close' }));
@@ -367,14 +382,14 @@ on({
     const cal = num(v.cal); const p = num(v.p); const c = num(v.c); const f = num(v.f);
     const kcal = cal || p * 4 + c * 4 + f * 9;
     if (!kcal) { toast('Enter calories or macros', 'warn'); return; }
-    addEntry(el.dataset.date || dayKey(), { id: '', name: v.name.trim() || 'Quick add', serving: 'entry', cal: kcal, p, c, f }, 1, v.meal);
+    addEntry(el.dataset.date || dayKey(), { id: '', name: v.name.trim() || 'Quick add', serving: 'entry', cal: kcal, p, c, f, fib: optNum(v.fib), na: optNum(v.na), pot: optNum(v.pot) }, 1, v.meal);
     buzz(); toast(`Added ${fmt(kcal)} kcal`); closeAllModals(); rerender();
   },
   'cf-save': () => {
     const v = formData(document.getElementById('cf'));
     if (!v.name.trim()) { toast('Give it a name', 'warn'); return; }
     const p = num(v.p); const c = num(v.c); const f = num(v.f);
-    const food = { id: 'c:' + uid(), name: v.name.trim(), serving: v.serving.trim() || '1 serving', cal: num(v.cal) || r0(p * 4 + c * 4 + f * 9), p, c, f, cat: 'My Foods' };
+    const food = { id: 'c:' + uid(), name: v.name.trim(), serving: v.serving.trim() || '1 serving', cal: num(v.cal) || r0(p * 4 + c * 4 + f * 9), p, c, f, fib: optNum(v.fib), na: optNum(v.na), pot: optNum(v.pot), cat: 'My Foods' };
     S.customFoods.unshift(food);
     save(); closeModal();
     if (cfAfter) { cfAfter(food); return; }
@@ -396,12 +411,23 @@ function offToFood(p) {
     p: n.proteins_100g || 0, c: n.carbohydrates_100g || 0, f: n.fat_100g || 0,
   };
   const id = 'o:' + (p.code || uid());
+  // per-serving value if the label has it, else scaled from per-100 g; null when unknown
+  const micro = (key, scale, mult) => {
+    const s = n[`${key}_serving`];
+    const h = n[`${key}_100g`];
+    const v = s != null && s !== '' ? Number(s) : h != null && h !== '' ? Number(h) * scale : null;
+    return v == null || !Number.isFinite(v) ? null : Math.round(v * mult * 10) / 10;
+  };
   if (n['energy-kcal_serving'] != null && sq > 0) {
-    return { id, name, serving: p.serving_size || `${sq} g`, cal: r0(n['energy-kcal_serving']), p: r1(n.proteins_serving || 0), c: r1(n.carbohydrates_serving || 0), f: r1(n.fat_serving || 0), g: sq, cat: 'Online' };
+    const sc = sq / 100;
+    return { id, name, serving: p.serving_size || `${sq} g`, cal: r0(n['energy-kcal_serving']), p: r1(n.proteins_serving || 0), c: r1(n.carbohydrates_serving || 0), f: r1(n.fat_serving || 0),
+      fib: micro('fiber', sc, 1), na: micro('sodium', sc, 1000), pot: micro('potassium', sc, 1000), g: sq, cat: 'Online' };
   }
   if (per100.cal == null) return null;
   const k = sq > 0 ? sq / 100 : 1;
-  return { id, name, serving: sq > 0 ? (p.serving_size || `${sq} g`) : '100 g', cal: r0(per100.cal * k), p: r1(per100.p * k), c: r1(per100.c * k), f: r1(per100.f * k), g: sq > 0 ? sq : 100, cat: 'Online' };
+  const per = (key, mult) => { const h = n[`${key}_100g`]; return h == null || h === '' || !Number.isFinite(Number(h)) ? null : Math.round(Number(h) * k * mult * 10) / 10; };
+  return { id, name, serving: sq > 0 ? (p.serving_size || `${sq} g`) : '100 g', cal: r0(per100.cal * k), p: r1(per100.p * k), c: r1(per100.c * k), f: r1(per100.f * k),
+    fib: per('fiber', 1), na: per('sodium', 1000), pot: per('potassium', 1000), g: sq > 0 ? sq : 100, cat: 'Online' };
 }
 
 async function fetchJSON(url, ms = 15000) {

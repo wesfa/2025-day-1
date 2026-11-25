@@ -3,7 +3,7 @@ import { dayKey, addDays, uid, parseDay } from './util.js';
 import { mirror } from './vault.js';
 import { DEFAULT_TEMPLATES, EX_BY_ID } from './program.js';
 import { FOOD_BY_ID } from './foods.js';
-import { calcTargets } from './calc.js';
+import { calcTargets, microTargets, SODIUM_TRAINING_EXTRA } from './calc.js';
 
 // The app was renamed from Trenches to Macros; the storage key stays so existing data carries over.
 const KEY = 'trenches:v1';
@@ -31,7 +31,7 @@ function defaults() {
       name: '', position: 'DE/DT', sex: 'm', age: 17, heightIn: 74,
       startWeight: 230, goalWeight: 245, rate: 0.5, phase: 'off', startDate: dayKey(),
     },
-    targets: { auto: true, cal: 3600, p: 230, c: 430, f: 100, water: 160 },
+    targets: { auto: true, cal: 3600, p: 230, c: 430, f: 100 },
     days: {},
     customFoods: [],
     foodCache: {},
@@ -161,10 +161,9 @@ export function mergeInto(into, from) {
     n.other++;
   }
   for (const [k, d] of Object.entries(from.days || {})) {
-    const cur = into.days[k] || (into.days[k] = { food: [], water: 0 });
+    const cur = into.days[k] || (into.days[k] = { food: [] });
     const have = new Set(cur.food.map((e) => e.id));
     for (const e of d.food || []) if (!have.has(e.id)) { cur.food.push(copy(e)); n.food++; }
-    if ((d.water || 0) > (cur.water || 0)) cur.water = d.water;
   }
   for (const [k, v] of Object.entries(from.weights || {})) if (into.weights[k] == null) { into.weights[k] = v; n.weights++; }
   const addById = (name, counter = 'other', keep = () => true) => {
@@ -197,16 +196,24 @@ export function summarize(s) {
 
 // ---------- Food ----------
 export function day(key = dayKey()) {
-  if (!S.days[key]) S.days[key] = { food: [], water: 0 };
+  if (!S.days[key]) S.days[key] = { food: [] };
   return S.days[key];
 }
 export function peekDay(key) {
-  return S.days[key] || { food: [], water: 0 };
+  return S.days[key] || { food: [] };
 }
+export const hasMicros = (o) => o && [o.fib, o.na, o.pot].every((v) => typeof v === 'number' && Number.isFinite(v));
 export function totals(key = dayKey()) {
-  const t = { cal: 0, p: 0, c: 0, f: 0 };
+  const t = { cal: 0, p: 0, c: 0, f: 0, fib: 0, na: 0, pot: 0, unknown: 0 };
   for (const e of peekDay(key).food) {
     t.cal += e.cal * e.qty; t.p += e.p * e.qty; t.c += e.c * e.qty; t.f += e.f * e.qty;
+    // older entries, quick adds and custom foods may not have fiber/sodium/potassium
+    let missing = false;
+    for (const m of ['fib', 'na', 'pot']) {
+      const v = e[m];
+      if (typeof v === 'number' && Number.isFinite(v)) t[m] += v * e.qty; else missing = true;
+    }
+    if (missing) t.unknown++;
   }
   return t;
 }
@@ -225,9 +232,12 @@ export function getFood(fid) {
 
 export function addEntry(key, food, qty, meal) {
   const d = day(key);
+  const micro = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
   d.food.push({
     id: uid(), fid: food.id, name: food.name, serving: food.serving,
-    cal: food.cal, p: food.p, c: food.c, f: food.f, qty, meal, t: Date.now(),
+    cal: food.cal, p: food.p, c: food.c, f: food.f,
+    fib: micro(food.fib), na: micro(food.na), pot: micro(food.pot),
+    qty, meal, t: Date.now(),
   });
   if (food.id) {
     if (!FOOD_BY_ID[food.id] && !S.customFoods.some((f) => f.id === food.id)) S.foodCache[food.id] = { ...food };
@@ -283,7 +293,14 @@ export function targets(key = dayKey()) {
   const base = S.targets.auto
     ? { ...calcTargets(S.profile, currentWeight()), auto: true }
     : { ...calcTargets(S.profile, currentWeight()), ...S.targets, auto: false };
-  const out = { ...base, avgCal: base.cal, avgC: base.c, dayType: null, dayDelta: 0 };
+  const trainingDay = dayType(key) === 'train';
+  const micro = microTargets(S.profile, trainingDay);
+  if (!S.targets.auto) {
+    if (S.targets.fib > 0) micro.fib = S.targets.fib;
+    if (S.targets.pot > 0) micro.pot = S.targets.pot;
+    if (S.targets.na > 0) micro.na = S.targets.na + (trainingDay ? SODIUM_TRAINING_EXTRA : 0);
+  }
+  const out = { ...base, ...micro, naExtra: trainingDay ? SODIUM_TRAINING_EXTRA : 0, avgCal: base.cal, avgC: base.c, dayType: null, dayDelta: 0 };
   const split = daySplit(base.cal);
   if (!split) return out;
   const type = dayType(key);

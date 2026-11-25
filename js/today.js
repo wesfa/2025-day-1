@@ -44,6 +44,32 @@ function suggestions(left) {
   return out.slice(0, 4);
 }
 
+// Fiber + potassium are goals to reach; sodium is a cap (higher on training days for sweat losses)
+export function microPanel(t, tg) {
+  const fibLeft = tg.fib - t.fib;
+  const potLeft = tg.pot - t.pot;
+  const naLeft = tg.na - t.na;
+  return `
+    <div class="macros">
+      <div class="macro">
+        <div class="macro-head"><b>Fiber</b><span><b class="vt">${r0(t.fib)}</b>/${tg.fib}g</span></div>
+        ${bar(t.fib, tg.fib, { cls: 'm-fib', label: 'Fiber' })}
+        <div class="muted small">${fibLeft > 0 ? `${r0(fibLeft)}g to go - fruit, veggies, beans, oats` : 'Hit it!'}</div>
+      </div>
+      <div class="macro">
+        <div class="macro-head"><b>Sodium</b><span><b class="vt">${fmt(t.na)}</b>/${fmt(tg.na)}mg</span></div>
+        ${bar(t.na, tg.na, { cls: 'm-na', label: 'Sodium' })}
+        <div class="muted small">${naLeft >= 0 ? `${fmt(naLeft)}mg under the limit` : `${fmt(-naLeft)}mg over the limit`}${tg.naExtra ? ` (includes +${fmt(tg.naExtra)}mg for sweat on a training day)` : ''}</div>
+      </div>
+      <div class="macro">
+        <div class="macro-head"><b>Potassium</b><span><b class="vt">${fmt(t.pot)}</b>/${fmt(tg.pot)}mg</span></div>
+        ${bar(t.pot, tg.pot, { cls: 'm-pot', label: 'Potassium' })}
+        <div class="muted small">${potLeft > 0 ? `${fmt(potLeft)}mg to go - potatoes, bananas, milk, beans` : 'Hit it!'}</div>
+      </div>
+    </div>
+    ${t.unknown ? `<p class="muted small">${t.unknown} item${t.unknown > 1 ? 's' : ''} today ${t.unknown > 1 ? "don't" : "doesn't"} have fiber/sodium/potassium info (logged before this update, a quick add, or a custom food without them), so the real totals are higher.</p>` : ''}`;
+}
+
 export function renderToday() {
   const k = dayKey();
   const t = totals(k);
@@ -85,7 +111,6 @@ export function renderToday() {
   else train = btn('Open gym', 'nav', { data: 'data-to="#/gym"' });
 
   const sug = suggestions(left);
-  const water = d.water || 0;
   const DAY = 86400000;
   const showInstall = !isStandalone() && !(S.settings.hideInstallUntil > Date.now());
   const backupDue = Date.now() - (S.settings.lastBackup || S.created || Date.now()) > 14 * DAY && !(S.settings.hideBackupUntil > Date.now());
@@ -135,10 +160,7 @@ export function renderToday() {
     ${left.cal < -300 && tg.dir < 0 ? '<p class="muted small">Over today. No stress - one day doesn\'t matter, the weekly average does.</p>' : ''}
   `, { ico: 'burger' })}
 
-  ${win('Water', `
-    <div class="water-row">${icon('drop', 24)}<b class="vt">${r0(water)}</b><span>/ ${tg.water} oz</span>${bar(water, tg.water, { cls: 'water' })}</div>
-    <div class="btn-row tight">${[8, 16, 20, 32].map((oz) => btn(`+${oz}`, 'water', { data: `data-oz="${oz}"` })).join('')}${btn('-8', 'water', { data: 'data-oz="-8"' })}</div>
-  `, { ico: 'drop' })}
+  ${win('Fiber, Sodium & Potassium', microPanel(t, tg), { ico: 'leaf' })}
 
   ${win('Training', train, { ico: 'dumbbell' })}
 
@@ -150,11 +172,6 @@ on({
   't-weigh': () => {
     const v = document.getElementById('t-weigh').value;
     if (logWeight(dayKey(), v)) { toast(`Logged ${r1(Number(v))} lb`, 'scale'); rerender(); }
-  },
-  water: (el) => {
-    const d = day(dayKey());
-    d.water = Math.max(0, (d.water || 0) + Number(el.dataset.oz));
-    save(); buzz(10); rerender();
   },
   'hide-install': () => { S.settings.hideInstallUntil = Date.now() + 3 * 86400000; save(); rerender(); },
   'hide-backup': () => { S.settings.hideBackupUntil = Date.now() + 7 * 86400000; save(); rerender(); },

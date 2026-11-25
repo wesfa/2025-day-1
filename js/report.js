@@ -12,7 +12,7 @@ export function weekStats(endKey = dayKey()) {
     const k = addDays(endKey, -i);
     const t = totals(k);
     const logged = peekDay(k).food.length > 0;
-    days.push({ k, dow: parseDay(k).getDay(), ...t, logged, water: peekDay(k).water || 0, weighed: S.weights[k] != null });
+    days.push({ k, dow: parseDay(k).getDay(), ...t, logged, weighed: S.weights[k] != null });
   }
   const logged = days.filter((d) => d.logged);
   const n = logged.length || 1;

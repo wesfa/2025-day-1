@@ -9,6 +9,24 @@ const PAL = {
 };
 
 const ART = {
+  leaf: [
+    '................',
+    '..........qqqq..',
+    '.......qqqPPPq..',
+    '.....qqPPPPPPq..',
+    '....qPPPPPPlPq..',
+    '...qPPPPPPlPPq..',
+    '...qPPPPPlPPq...',
+    '..qPPPPPlPPPq...',
+    '..qPPPPlPPPq....',
+    '..qPPPlPPPq.....',
+    '..qPPlPPqq......',
+    '..qPlqqq........',
+    '..qlq...........',
+    '.qq.............',
+    'q...............',
+    '................',
+  ],
   blocks: [
     'kkkkkkk.kkkkkkk.',
     'kwrrrrk.kwbbbbk.',

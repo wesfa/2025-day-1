@@ -36,9 +36,8 @@ export function calcTargets(profile, currentWeight) {
   const p = round5(proteinBase * 1.0);
   const f = round5((cal * 0.25) / 9);
   const c = Math.max(0, round5((cal - p * 4 - f * 9) / 4));
-  const water = Math.round((Math.max(96, w * 0.6) + 16) / 8) * 8;
 
-  return { cal, p, c, f, water, bmr: r0(bmr), maintenance: r0(maintenance), delta: r0(delta), dir };
+  return { cal, p, c, f, bmr: r0(bmr), maintenance: r0(maintenance), delta: r0(delta), dir };
 }
 
 // Estimated 1-rep max (Epley). Only meaningful for reps <= 12.
@@ -70,4 +69,20 @@ export function platesFor(total, bar = 45) {
     while (side >= p - 1e-9) { out.push(p); side -= p; }
   }
   return { plates: out, leftover: Math.round(side * 2 * 100) / 100 };
+}
+
+// Daily fiber / sodium / potassium targets (US Dietary Reference Intakes).
+// Fiber and potassium are goals to reach; sodium is a cap. Football players sweat out a lot of
+// sodium, so training days get an extra 1,000 mg - cutting salt hard on practice days raises
+// cramping risk.
+export const SODIUM_LIMIT = 2300;
+export const SODIUM_TRAINING_EXTRA = 1000;
+export function microTargets(profile, trainingDay) {
+  const female = profile.sex === 'f';
+  const teen = (profile.age || 17) < 19;
+  return {
+    fib: female ? (teen ? 26 : 25) : 38,
+    pot: female ? (teen ? 2300 : 2600) : (teen ? 3000 : 3400),
+    na: SODIUM_LIMIT + (trainingDay ? SODIUM_TRAINING_EXTRA : 0),
+  };
 }

@@ -37,7 +37,7 @@ export function aiSpend() {
 // ---------- The request ----------
 const SYSTEM = `You estimate nutrition for a food log used by a high school football defensive lineman. The user sends a photo of food, a description, or both.
 
-List each distinct food or drink as its own item with a short name, the portion you estimated (household units like oz, cups, slices, pieces), and calories, protein, carbs, and fat in grams for that portion.
+List each distinct food or drink as its own item with a short name, the portion you estimated (household units like oz, cups, slices, pieces), and calories, protein, carbs, and fat in grams, plus fiber in grams and sodium and potassium in milligrams, for that portion.
 
 - When the description and the photo disagree, trust the description. The user knows what they ate, the brand, and how much.
 - Judge portions from visual cues such as plate size (dinner plates are about 10-11 inches), utensils, hands, and packaging.
@@ -46,7 +46,7 @@ List each distinct food or drink as its own item with a short name, the portion 
 - If something is ambiguous, pick the most likely option and say what you assumed in notes, so the user can correct it.
 - If neither the photo nor the description contains food, return no items and say so in notes.
 
-Round calories to the nearest 5 and grams to whole numbers. Keep notes to one or two short sentences.`;
+Round calories to the nearest 5, grams to whole numbers, and milligrams to the nearest 10. Keep notes to one or two short sentences.`;
 
 const SCHEMA = {
   type: 'object',
@@ -62,8 +62,11 @@ const SCHEMA = {
           protein_g: { type: 'number' },
           carbs_g: { type: 'number' },
           fat_g: { type: 'number' },
+          fiber_g: { type: 'number' },
+          sodium_mg: { type: 'number' },
+          potassium_mg: { type: 'number' },
         },
-        required: ['name', 'portion', 'calories', 'protein_g', 'carbs_g', 'fat_g'],
+        required: ['name', 'portion', 'calories', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g', 'sodium_mg', 'potassium_mg'],
         additionalProperties: false,
       },
     },
@@ -195,7 +198,7 @@ function renderAI() {
     out = `<div class="alert">${icon('warn', 16)} ${esc(ai.error)}</div>`;
   } else if (ai.status === 'done') {
     const on = ai.items.filter((x) => x.on);
-    const t = on.reduce((a, x) => ({ cal: a.cal + num(x.cal), p: a.p + num(x.p), c: a.c + num(x.c), f: a.f + num(x.f) }), { cal: 0, p: 0, c: 0, f: 0 });
+    const t = on.reduce((a, x) => ({ cal: a.cal + num(x.cal), p: a.p + num(x.p), c: a.c + num(x.c), f: a.f + num(x.f), fib: a.fib + num(x.fib), na: a.na + num(x.na), pot: a.pot + num(x.pot) }), { cal: 0, p: 0, c: 0, f: 0, fib: 0, na: 0, pot: 0 });
     out = group(`Claude's estimate <span class="tag conf-${esc(ai.confidence)}">${esc(ai.confidence || '?')} confidence</span>`, `
       ${ai.items.length ? `<div class="ai-items">
         ${ai.items.map((x, i) => `
@@ -205,10 +208,11 @@ function renderAI() {
               <input class="inp ai-name" value="${esc(x.name)}" data-change="ai-item" data-i="${i}" data-k="name" aria-label="Food name">
               <small class="muted">${esc(x.portion)}</small>
               <div class="ai-nums">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<label><span>${l}</span><input class="inp" type="number" inputmode="decimal" value="${r0(x[k])}" data-change="ai-item" data-i="${i}" data-k="${k}"></label>`).join('')}</div>
+              <div class="ai-nums three">${[['fib', 'Fiber g'], ['na', 'Sodium mg'], ['pot', 'Potass. mg']].map(([k, l]) => `<label><span>${l}</span><input class="inp" type="number" inputmode="decimal" value="${r0(x[k])}" data-change="ai-item" data-i="${i}" data-k="${k}"></label>`).join('')}</div>
             </div>
           </div>`).join('')}
       </div>
-      <div class="ai-total"><b>Total</b><span><b class="vt">${fmt(t.cal)}</b> kcal</span><span>P ${r0(t.p)}g · C ${r0(t.c)}g · F ${r0(t.f)}g</span></div>` : '<p class="empty">No food found.</p>'}
+      <div class="ai-total"><b>Total</b><span><b class="vt">${fmt(t.cal)}</b> kcal</span><span>P ${r0(t.p)}g · C ${r0(t.c)}g · F ${r0(t.f)}g</span><span class="muted small">Fiber ${r0(t.fib)}g · Sodium ${fmt(t.na)}mg · Potassium ${fmt(t.pot)}mg</span></div>` : '<p class="empty">No food found.</p>'}
       ${ai.notes ? `<p class="why">${esc(ai.notes)}</p>` : ''}
       <p class="muted small">Numbers look off? Fix them above, or add details to the description and tap Analyze again. This one cost about ${ai.cost < 0.01 ? 'less than 1 cent' : `${(ai.cost * 100).toFixed(1)} cents`}.</p>
       ${on.length ? `<div class="btn-row">${btn(`Add ${on.length} item${on.length > 1 ? 's' : ''} to ${esc(ai.meal)}`, 'ai-add', { cls: 'primary grow', ico: 'check' })}</div>` : ''}`);
@@ -276,7 +280,7 @@ on({
       const res = r.result;
       Object.assign(ai, {
         status: 'done', cost: r.cost || 0, notes: res.notes || '', confidence: res.confidence || '',
-        items: (res.items || []).map((x) => ({ on: true, name: x.name, portion: x.portion, cal: x.calories, p: x.protein_g, c: x.carbs_g, f: x.fat_g })),
+        items: (res.items || []).map((x) => ({ on: true, name: x.name, portion: x.portion, cal: x.calories, p: x.protein_g, c: x.carbs_g, f: x.fat_g, fib: x.fiber_g, na: x.sodium_mg, pot: x.potassium_mg })),
       });
       buzz(20);
     }
@@ -294,7 +298,8 @@ on({
     const on = ai.items.filter((x) => x.on);
     for (const x of on) {
       // give AI items an id so they show up in Recent for one-tap re-logging
-      const food = { id: 'ai:' + uid(), name: x.name, serving: x.portion || '1 serving', cal: r0(x.cal), p: r0(x.p), c: r0(x.c), f: r0(x.f), cat: 'AI estimate' };
+      const opt = (v) => (typeof v === 'number' && Number.isFinite(v) ? r0(v) : null);
+      const food = { id: 'ai:' + uid(), name: x.name, serving: x.portion || '1 serving', cal: r0(x.cal), p: r0(x.p), c: r0(x.c), f: r0(x.f), fib: opt(x.fib), na: opt(x.na), pot: opt(x.pot), cat: 'AI estimate' };
       addEntry(ai.date, food, 1, ai.meal);
     }
     toast(`Added ${on.length} item${on.length > 1 ? 's' : ''} to ${esc(ai.meal)}`, 'check');

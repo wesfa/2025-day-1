@@ -10,7 +10,7 @@ It installs to your phone's home screen like a real app, works offline, and upda
 
 | Screen | Features |
 | --- | --- |
-| **Today** | Daily weigh-in box, calories/protein/carbs/fat progress bars, water tracker, one-tap meal logging, "Coach says" food suggestions to close your protein/calorie gap, today's workout |
+| **Today** | Daily weigh-in box, calories/protein/carbs/fat progress bars, fiber/sodium/potassium tracker, one-tap meal logging, "Coach says" food suggestions to close your protein/calorie gap, today's workout |
 | **AI Food Scanner** | Snap a photo and/or describe a meal; Claude lists each item with estimated calories, protein, carbs and fat. You review and edit before adding. Needs your own Claude API key |
 | **Food** | Breakfast/Lunch/Dinner/Snacks diary, 140+ built-in foods (incl. fast food), online search (Open Food Facts), barcode scanner, Recent, Favorites, saved meals, copy yesterday's meal, quick add, custom foods |
 | **Gym** | 4-day DE/DT off-season program (power cleans, squats, bench, get-offs, hand fighting, neck work…), live workout logger (sets × reps × weight), "last time" numbers, progressive-overload suggestions, auto rest timer, PR detection, coaching cues, plate calculator, editable program |
@@ -20,6 +20,9 @@ It installs to your phone's home screen like a real app, works offline, and upda
 | **Control Panel** | Profile, auto-calculated macro targets (or enter your own), 7 color schemes (default **Meadow**: pixel hill-and-sky wallpaper with drifting clouds and glossy blue windows; **Island**: pixel beach with twinkling water), backup export/import |
 
 Macro targets: Mifflin-St Jeor BMR × training-phase activity factor, ±500 kcal per lb/week of goal change; ~1 g protein per lb, 25% fat, the rest carbs.
+Fiber and potassium are daily goals by age and sex (fiber 38 g, potassium 3,000 mg for teen guys). Sodium is a 2,300 mg max with +1,000 mg on training days for sweat losses.
+Built-in foods carry all three values, as do Open Food Facts results when the label lists them and AI estimates. Entries without them are counted and called out.
+
 Training-day / rest-day targets (on by default): the same weekly total, shifted toward lift/practice days. Training and rest days are
 15% of the average apart, and the difference is all carbs. Planned lift days come from Control Panel, a finished workout makes that day a
 training day, and any day can be switched on Today.
