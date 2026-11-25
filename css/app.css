@@ -1097,9 +1097,9 @@ html .c-fib { color: var(--mfib); } html .c-na { color: var(--mna); } html .c-po
 .xp-rank { flex: none; display: flex; align-items: center; }
 .rank-ups { list-style: none; padding: 0; margin: 4px 0; }
 .rank-ups li { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
-.mu-bodies { display: flex; justify-content: center; gap: 22px; }
+.mu-bodies { display: flex; justify-content: center; gap: 18px; padding: 12px 6px 8px; background: #0b0e1c; border: 1px solid var(--line-soft, rgba(0, 0, 0, 0.2)); }
 .mu-bodies figure { margin: 0; text-align: center; }
-.mu-bodies figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.mu-bodies figcaption { font-size: 12px; color: #9aa3c0; margin-top: 6px; }
 .body-svg { display: block; image-rendering: pixelated; }
 .mu-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: center; font-size: 12px; margin-top: 10px; }
 .mu-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; }

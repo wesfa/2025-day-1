@@ -10,19 +10,19 @@ const LETTER = {
 };
 // sets per week -> heat level
 export const HEAT = [
-  { min: 0, color: '#7c8299', label: 'none' },
+  { min: 0, color: '#3f4b7c', label: 'none' },
   { min: 0.5, color: '#f3e08c', label: '1-2' },
   { min: 3, color: '#ffc14d', label: '3-5' },
   { min: 6, color: '#ff9a3c', label: '6-9' },
   { min: 10, color: '#ff6a3c', label: '10-14' },
   { min: 15, color: '#ff3b6b', label: '15+' },
 ];
-const SKIN = '#5b6076';
-const SHORTS = '#363b52';
+// light skin, outline and seams like an anatomy chart; muscles coloured by heat
+const SKIN = '#d5d9e4';
+const LINE = '#d5d9e4';
+const SHORTS = '#2b3047';
 export const heatOf = (sets) => HEAT.reduce((lvl, h, i) => (sets >= h.min ? i : lvl), 0);
 
-const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
-const shade = (c, k) => '#' + hex(c).map((v) => Math.round(v * k).toString(16).padStart(2, '0')).join('');
 
 function colorFor(ch, vol) {
   const up = ch.toUpperCase();
@@ -32,28 +32,33 @@ function colorFor(ch, vol) {
   return m ? HEAT[heatOf(vol[m] || 0)].color : SKIN;
 }
 
-// One body as SVG: runs of same-coloured pixels become one rect. Seams between muscles and the outline
-// are drawn a shade darker so the shapes read.
+// Outline pixels, seam letters (lowercase) and places where two different muscles meet are drawn light
+function isLine(at, x, y) {
+  const ch = at(x, y);
+  if (ch !== ch.toUpperCase()) return true;
+  if ([at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes('.')) return true;
+  const other = (n) => n !== '.' && n.toUpperCase() !== ch && !'HXP'.includes(n.toUpperCase());
+  return other(at(x + 1, y)) || other(at(x, y + 1));
+}
+
+// One body as SVG: runs of same-coloured pixels become one rect
 export function bodySvg(view, vol, scale = 3) {
   const rows = view === 'back' ? BODY_BACK : BODY_FRONT;
   const at = (x, y) => (y >= 0 && y < BODY_H && x >= 0 && x < BODY_W ? rows[y][x] : '.');
+  const colorAt = (x, y) => {
+    const up = at(x, y).toUpperCase();
+    if (up === 'H' || up === 'X') return SKIN;
+    if (up === 'P') return SHORTS;
+    return isLine(at, x, y) ? LINE : colorFor(at(x, y), vol);
+  };
   let rects = '';
   for (let y = 0; y < BODY_H; y++) {
     let x = 0;
     while (x < BODY_W) {
-      const ch = at(x, y);
-      if (ch === '.') { x++; continue; }
-      const col = (xx) => {
-        const c = at(xx, y);
-        let fill = colorFor(c, vol);
-        const edge = at(xx, y - 1) === '.' || at(xx, y + 1) === '.' || at(xx - 1, y) === '.' || at(xx + 1, y) === '.';
-        const seam = at(xx + 1, y) !== c && at(xx + 1, y) !== '.' || at(xx, y + 1) !== c && at(xx, y + 1) !== '.';
-        if (edge) fill = shade(fill, 0.7); else if (seam) fill = shade(fill, 0.78);
-        return fill;
-      };
-      const fill = col(x);
+      if (at(x, y) === '.') { x++; continue; }
+      const fill = colorAt(x, y);
       let run = 1;
-      while (x + run < BODY_W && at(x + run, y) !== '.' && col(x + run) === fill) run++;
+      while (x + run < BODY_W && at(x + run, y) !== '.' && colorAt(x + run, y) === fill) run++;
       rects += `<rect x="${x}" y="${y}" width="${run}" height="1" fill="${fill}"/>`;
       x += run;
     }
