@@ -5,6 +5,9 @@ import { e1rm, platesFor } from './calc.js';
 import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, buzz, HAPTIC } from './util.js';
 import { win, group, btn, field, select, on, actions, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
 import { icon } from './icons.js';
+import { MUSCLES, EQUIPMENT, EX_META } from './exlib.js';
+import { exerciseRanks, isRanked } from './strength.js';
+import { badge, openRankDetail } from './ranks.js';
 
 const firstNum = (s) => { const m = String(s || '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
 
@@ -96,8 +99,10 @@ export function renderWorkout() {
   if (!w) {
     return win('Workout', `<p>No workout running.</p>${btn('Go to Gym', 'nav', { data: 'data-to="#/gym"', cls: 'primary' })}`, { ico: 'dumbbell' });
   }
+  const ranks = Object.fromEntries(exerciseRanks(w.id).map((x) => [x.exId, x]));
   const blocks = w.ex.map((e, i) => {
     const ex = getEx(e.ex);
+    const rk = ranks[e.ex];
     const [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
     const last = lastSetsFor(e.ex, w.id);
     const sug = overload(ex, e, last);
@@ -120,6 +125,7 @@ export function renderWorkout() {
       <div class="group-title"><button class="link" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button></div>
       <div class="ex-meta">${e.target ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last ? '' : '<span class="muted small">First time - start light, own the form</span>'}
         <button class="ex-more" data-act="ex-menu" data-i="${i}" aria-label="More for ${esc(ex.name)}">&middot;&middot;&middot;</button></div>
+      ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">next: ${esc(rk.next.label)}</span>` : ''}</button>` : ''}
       ${sug ? `<div class="coach-tip ${sug.up ? 'up' : ''}">${sug.up ? icon('up', 10) : ''} ${esc(sug.msg)}</div>` : ''}
       <div class="set set-head"><span class="set-n">Set</span><span>Prev</span><span>${l1}</span><span>${l2}</span><span></span></div>
       ${rows}
@@ -217,13 +223,17 @@ on({
       return;
     }
     const prs = findPRs(w);
+    const before = Object.fromEntries(exerciseRanks(w.id).map((x) => [x.exId, x.score]));
     w.end = Date.now();
     // drop unchecked sets so history stays clean
     w.ex.forEach((e) => { e.sets = e.sets.filter((s) => s.done); });
     w.ex = w.ex.filter((e) => e.sets.length);
     S.activeId = null;
     save(true); stopRest();
-    buzz(prs.length ? [14, 70, 14, 70, 30] : HAPTIC.success);  // a little celebration for a new PR
+    // rank-ups: a lift that moved up a division (or more) because of this workout
+    const step = (sc) => (sc >= 6 ? 18 : Math.floor(sc * 3));
+    const ups = exerciseRanks().filter((x) => w.ex.some((e) => e.ex === x.exId) && step(x.score) > step(before[x.exId] ?? -1));
+    buzz(prs.length || ups.length ? [14, 70, 14, 70, 30] : HAPTIC.success);  // a little celebration for a new PR or rank
     go('#/gym');
     if (prs.length) beep([523, 659, 784, 1047], 0.13);
     await msgBox({
@@ -231,7 +241,8 @@ on({
       ico: prs.length ? 'trophy' : 'check',
       text: `<p><b>${esc(w.name)}</b></p>
         <p>Time ${fmtDuration(w.end - w.start)} · ${doneSets} sets · ${fmt(volume(w))} lb moved</p>
-        ${prs.length ? `<p class="pr-line"><b>NEW PRs!</b></p><ul class="pr-list">${prs.map((p) => `<li>${esc(p.name)}: ${p.w} x ${p.r} (est. max ${r0(p.e)} lb)</li>`).join('')}</ul>` : '<p>Logged. Recover: protein + carbs within the next hour.</p>'}`,
+        ${ups.length ? `<p class="pr-line"><b>RANK UP!</b></p><ul class="rank-ups">${ups.map((x) => `<li>${badge(x.rank, 18)} ${esc(getEx(x.exId).name)}: <b style="color:${x.rank.color}">${esc(x.rank.name)}</b></li>`).join('')}</ul>` : ''}
+        ${prs.length ? `<p class="pr-line"><b>NEW PRs!</b></p><ul class="pr-list">${prs.map((p) => `<li>${esc(p.name)}: ${p.w} x ${p.r} (est. max ${r0(p.e)} lb)</li>`).join('')}</ul>` : ups.length ? '' : '<p>Logged. Recover: protein + carbs within the next hour.</p>'}`,
     });
   },
 });
@@ -369,27 +380,38 @@ on({
 });
 
 // ================= Exercise picker / library =================
-const xp = { q: '', cat: '', onPick: null };
+const xp = { q: '', cat: '', mus: '', onPick: null };
 export function openExPicker(onPick) {
   xp.q = ''; xp.cat = ''; xp.onPick = onPick;
   openModal(renderExPicker, { full: true });
 }
 function renderExPicker() {
   const q = xp.q.toLowerCase();
-  const list = allExercises().filter((e) => (!xp.cat || e.cat === xp.cat) && (!q || e.name.toLowerCase().includes(q)));
+  const musclesOf = (e) => (EX_META[e.id] ? EX_META[e.id].m : e.muscle ? [e.muscle] : []);
+  const list = allExercises().filter((e) => (!xp.cat || e.cat === xp.cat) && (!xp.mus || musclesOf(e).includes(xp.mus)) && (!q || e.name.toLowerCase().includes(q)));
+  const ranks = Object.fromEntries(exerciseRanks().map((x) => [x.exId, x]));
+  const sub = (e) => {
+    const m = musclesOf(e).map((k) => MUSCLES[k] && MUSCLES[k].name).filter(Boolean).slice(0, 2).join(', ');
+    const eq = EX_META[e.id] && EQUIPMENT[EX_META[e.id].eq];
+    return [m, eq].filter(Boolean).join(' · ') || e.cat;
+  };
   const cats = [...EX_CATS, 'Custom'];
   const byCat = cats.map((c) => {
     const items = list.filter((e) => (e.cat || 'Custom') === c);
     if (!items.length) return '';
     return `<div class="sub-head">${esc(c)}</div>` + items.map((e) => `
       <div class="row static">
-        <button class="row-main link-row" data-act="${xp.onPick ? 'xp-pick' : 'ex-info'}" data-id="${e.id}"><span class="row-name">${esc(e.name)}</span><span class="row-sub">${esc(e.why || e.cat)}</span></button>
+        <button class="row-main link-row" data-act="${xp.onPick ? 'xp-pick' : 'ex-info'}" data-id="${e.id}"><span class="row-name">${esc(e.name)}</span><span class="row-sub">${esc(sub(e))}</span></button>
+        ${ranks[e.id] ? `<span class="xp-rank" title="${esc(ranks[e.id].rank.name)}">${badge(ranks[e.id].rank, 22)}</span>` : ''}
         <span class="row-btns">${xp.onPick ? btn('Add', 'xp-pick', { data: `data-id="${e.id}"`, cls: 'primary' }) : ''}${btn('?', 'ex-info', { data: `data-id="${e.id}"`, cls: 'sq' })}</span>
       </div>`).join('');
   }).join('');
   return win(xp.onPick ? 'Add Exercise' : 'Exercise Library', `
     <div class="search-row"><input id="xp-q" class="inp grow" type="search" placeholder="Search exercises..." value="${esc(xp.q)}" data-input="xp-q" autocomplete="off"></div>
-    <div class="field-inline">${select('cat', [['', 'All categories'], ...cats.map((c) => [c, c])], xp.cat, { data: 'data-change="xp-cat"' })}</div>
+    <div class="grid2">
+      ${select('cat', [['', 'All categories'], ...cats.map((c) => [c, c])], xp.cat, { data: 'data-change="xp-cat"' })}
+      ${select('mus', [['', 'All muscles'], ...Object.entries(MUSCLES).map(([k, m]) => [k, m.name])], xp.mus || '', { data: 'data-change="xp-mus"' })}
+    </div>
     <div class="list">${byCat || '<p class="empty">No exercises match.</p>'}</div>
     <div class="btn-row">${btn('+ Create exercise', 'xp-create')}</div>
   `, { cls: 'full-win', close: 'modal-close', ico: 'book' });
@@ -401,12 +423,14 @@ on({
     xpTimer = setTimeout(() => { drawModals(); const i = document.getElementById('xp-q'); if (i) { i.focus(); const n = i.value.length; try { i.setSelectionRange(n, n); } catch (e) { /* */ } } }, 120);
   },
   'xp-cat': (el) => { xp.cat = el.value; drawModals(); },
+  'xp-mus': (el) => { xp.mus = el.value; drawModals(); },
   'xp-pick': (el) => xp.onPick && xp.onPick(el.dataset.id),
   'xp-create': () => openModal(() => win('Create Exercise', `
     <form id="xc" onsubmit="return false">
       ${field('Name', '<input class="inp" name="name" placeholder="e.g. Sumo Deadlift">')}
       ${field('Category', select('cat', [...EX_CATS, 'Custom'].map((c) => [c, c]), 'Custom'))}
       ${field('What you log', select('type', [['weight', 'Weight x reps'], ['body', 'Bodyweight reps (+ optional weight)'], ['time', 'Time (seconds)'], ['dist', 'Distance (yards)']], 'weight'))}
+      ${field('Main muscle (for the muscle map)', select('muscle', [['', 'None'], ...Object.entries(MUSCLES).map(([k, m]) => [k, m.name])], ''))}
       ${field('Rest timer (sec)', '<input class="inp" name="rest" type="number" inputmode="numeric" value="90">')}
       ${field('Coaching cues (one per line)', '<textarea class="inp" name="cues" rows="3"></textarea>')}
       <div class="btn-row">${btn('Save', 'xc-save', { cls: 'primary grow', type: 'submit' })}${btn('Cancel', 'modal-close')}</div>
@@ -414,7 +438,7 @@ on({
   'xc-save': () => {
     const v = formData(document.getElementById('xc'));
     if (!v.name.trim()) { toast('Name it', 'warn'); return; }
-    S.customEx.push({ id: 'x' + uid(), name: v.name.trim(), cat: v.cat, type: v.type, rest: num(v.rest, 90), cues: v.cues.split('\n').map((s) => s.trim()).filter(Boolean), why: '' });
+    S.customEx.push({ id: 'x' + uid(), name: v.name.trim(), cat: v.cat, type: v.type, rest: num(v.rest, 90), cues: v.cues.split('\n').map((s) => s.trim()).filter(Boolean), why: '', ...(v.muscle ? { muscle: v.muscle } : {}) });
     save(); closeModal(); drawModals();
   },
   'ex-info': (el) => openExInfo(el.dataset.id),
@@ -434,7 +458,12 @@ function openExInfo(id) {
   const hist = exHistory(id);
   let best = null;
   for (const h of hist) for (const s of h.sets) { const v = e1rm(s.w, s.r); if (v && (!best || v > best.e)) best = { e: v, w: s.w, r: s.r, date: h.date }; }
+  const meta = EX_META[id];
+  const mus = meta ? `<p class="small"><b>Works:</b> ${esc(meta.m.map((k) => MUSCLES[k].name).join(', '))}${meta.s.length ? ` <span class="muted">· helps: ${esc(meta.s.map((k) => MUSCLES[k].name).join(', '))}</span>` : ''}</p>` : '';
+  const rk = exerciseRanks().find((x) => x.exId === id);
   openModal(() => win(esc(ex.name), `
+    ${mus}
+    ${rk ? `<button class="row rk-row" data-act="rk-open" data-id="${esc(id)}">${badge(rk.rank, 26)}<span class="row-main"><span class="row-name" style="color:${rk.rank.color}">${esc(rk.rank.name)}</span><span class="row-sub">Tap for your rank graph and standards</span></span></button>` : isRanked(id) ? '<p class="muted small">Ranked lift - log a set to get your rank.</p>' : ''}
     ${ex.why ? `<p class="why">${esc(ex.why)}</p>` : ''}
     ${ex.cues && ex.cues.length ? group('Coaching cues', `<ol class="cues">${ex.cues.map((c) => `<li>${esc(c)}</li>`).join('')}</ol>`) : ''}
     ${best ? group('Personal best', `<p>${icon('trophy', 16)} <b>${best.w} x ${best.r}</b> on ${esc(prettyDay(best.date))}</p><p>Estimated 1-rep max: <b class="vt">${r0(best.e)}</b> lb</p>`) : ''}

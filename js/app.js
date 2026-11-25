@@ -7,6 +7,7 @@ import { dayKey, clockNow, esc, isStandalone, buzz, HAPTIC, hapticsUsed, setHapt
 import { renderToday } from './today.js';
 import { renderFood, view as foodView } from './food.js';
 import { renderGym, renderWorkout, tickWorkoutClock } from './gym.js';
+import { renderRanks } from './ranks.js';
 import { renderWeight, drawWeightChart, resetWeightView } from './weight.js';
 import { renderSettings, renderReminders, applyTheme, openInstallHelp, APP_VERSION } from './settings.js';
 import { renderWizard, setWizardDone } from './wizard.js';
@@ -19,6 +20,7 @@ const SCREENS = {
   today: { render: renderToday, title: 'Today' },
   food: { render: renderFood, title: 'Food' },
   gym: { render: renderGym, title: 'Gym' },
+  ranks: { render: renderRanks, title: 'Ranks' },
   workout: { render: renderWorkout, title: 'Workout' },
   weight: { render: renderWeight, title: 'Weight', after: drawWeightChart },
   reminders: { render: renderReminders, title: 'Reminders' },
@@ -30,6 +32,7 @@ const TASKS = [
   ['today', 'Today', 'calendar'],
   ['food', 'Food', 'burger'],
   ['gym', 'Gym', 'dumbbell'],
+  ['ranks', 'Ranks', 'trophy'],
   ['weight', 'Weight', 'scale'],
 ];
 

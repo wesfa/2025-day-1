@@ -4,7 +4,9 @@
 //   time   -> lb x seconds  dist -> lb x yards
 // rest = default rest timer in seconds.
 
-export const EX_CATS = ['Power', 'Lower', 'Upper Push', 'Upper Pull', 'Neck & Grip', 'Core', 'D-Line Drills', 'Conditioning'];
+import { MORE_EXERCISES } from './exlib.js';
+
+export const EX_CATS = ['Power', 'Lower', 'Upper Push', 'Upper Pull', 'Shoulders', 'Arms', 'Neck & Grip', 'Core', 'D-Line Drills', 'Conditioning', 'Cardio', 'Mobility'];
 
 export const EXERCISES = [
   // ---- Power ----
@@ -152,6 +154,9 @@ export const EXERCISES = [
     cues: ['Slow and controlled', 'Breathe into the stretch'],
     why: 'Hip mobility = lower pad level and fewer groin strains.' },
 ];
+
+// the wider gym library (muscles + strength standards live in exlib.js)
+EXERCISES.push(...MORE_EXERCISES);
 
 export const EX_BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 

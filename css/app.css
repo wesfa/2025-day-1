@@ -1067,3 +1067,51 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 /* Each nutrient keeps its own colour in labels and numbers, matching its bar (kept last so it beats hint-text greys) */
 html .c-p { color: var(--mp); } html .c-c { color: var(--mc); } html .c-f { color: var(--mf); }
 html .c-fib { color: var(--mfib); } html .c-na { color: var(--mna); } html .c-pot { color: var(--mpot); }
+
+/* ---------- Ranks & Muscles ---------- */
+.rk-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.rk-tabs .btn { flex: 1; }
+.small-tabs .btn { min-height: 34px; font-size: 13px; padding: 4px 6px; }
+.rk-overall { display: flex; gap: 12px; align-items: center; margin: 4px 0 8px; }
+.rk-ov-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rk-name { font-size: 22px; }
+.rk-badge { flex: none; image-rendering: pixelated; }
+.rk-ladder { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 4px; }
+.rk-ladder span { font-size: 11px; padding: 1px 5px; color: var(--tc); border: 1px solid transparent; opacity: 0.55; }
+.rk-ladder span.on { border-color: var(--tc); opacity: 1; }
+.rk-row { align-items: center; gap: 10px; }
+.rk-row .row-main { gap: 2px; }
+.rk-tag { font-size: 13px; white-space: nowrap; align-self: flex-start; margin-top: 2px; }
+.rk-bar { display: block; height: 6px; background: var(--field); margin: 3px 0 1px; max-width: 190px; }
+.rk-bar i { display: block; height: 100%; }
+.rk-chart { padding: 6px; margin: 6px 0; }
+.rk-chart-svg { display: block; }
+.rk-chart-svg .ch-lbl { font: 10px 'VT323', monospace; fill: var(--muted); }
+.ch-line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.ch-grid { stroke: var(--grid); stroke-width: 1; }
+.rk-std-row { display: flex; justify-content: space-between; gap: 8px; padding: 5px 6px; font-size: 14px; border-bottom: 1px dotted var(--lo); }
+.rk-std-row span:last-child { text-align: right; color: var(--muted); }
+.rk-std-row.on { background: var(--tip); font-weight: 700; }
+.rk-std-row.on span:last-child { color: var(--text); }
+.wo-rank { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: none; border: 0; padding: 2px 0; margin: 2px 0 4px; font: inherit; font-size: 13px; color: var(--text); cursor: pointer; text-align: left; }
+.xp-rank { flex: none; display: flex; align-items: center; }
+.rank-ups { list-style: none; padding: 0; margin: 4px 0; }
+.rank-ups li { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.mu-bodies { display: flex; justify-content: center; gap: 22px; }
+.mu-bodies figure { margin: 0; text-align: center; }
+.mu-bodies figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.body-svg { display: block; image-rendering: pixelated; }
+.mu-legend { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: center; font-size: 12px; margin-top: 10px; }
+.mu-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; }
+.mu-radar { display: flex; justify-content: center; }
+.radar-svg .rd-ring { fill: none; stroke: var(--lo); stroke-width: 1; }
+.radar-svg .rd-ring.out { stroke: var(--accent); }
+.radar-svg .rd-spoke { stroke: var(--lo); stroke-width: 1; }
+.radar-svg .rd-shape { fill: rgba(255, 154, 60, 0.35); stroke: #ff9a3c; stroke-width: 2; }
+.radar-svg .rd-label { font: 13px 'DotGothic16', sans-serif; fill: var(--text); }
+.radar-svg .rd-val { font: 13px 'VT323', monospace; fill: var(--muted); }
+.mu-row { display: grid; grid-template-columns: 112px 1fr 38px; gap: 8px; align-items: center; padding: 3px 0; font-size: 14px; }
+.mu-row.zero { opacity: 0.5; }
+.mu-bar { height: 8px; background: var(--field); }
+.mu-bar i { display: block; height: 100%; }
+.mu-row .vt { text-align: right; font-size: 18px; }
