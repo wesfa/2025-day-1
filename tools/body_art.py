@@ -157,14 +157,12 @@ def back():
     fill(g, 'U', lambda x, y: torso(x, y) and y < 30.5)  # rhomboids / teres, between traps and lats
     fill(g, 'W', lat)
     fill(g, 'E', lambda x, y: torso(x, y) and y >= 29 and not lat(x, y))  # erectors
-    fill(g, 'O', lambda x, y: side(y) <= x < 19.4 and 36.4 <= y < 37.8)
     fill(g, 'T', trap)
     fill(g, 'R', DELT)
     glute_max = ell(19.6, 42.2, 4.3, 4.4)
-    fill(g, 'G', lambda x, y: (side(y) <= x and 37.8 <= y < 41.0) or (glute_max(x, y) and 37.8 <= y < 46.0))
-    # the rounded top of glute max against the hip (glute med)
-    fill(g, 'g', lambda x, y: side(y) <= x < 19.0 and 37.8 <= y < 41.0 and ell(19.6, 42.2, 5.0, 5.1)(x, y) and not glute_max(x, y))
+    fill(g, 'G', lambda x, y: glute_max(x, y) and 37.8 <= y < 46.0)
     seam_centre(g, 16, 46)  # spine + cleft
+    fill(g, 'P', lambda x, y: side(y) <= x and 36.4 <= y < 41.0)  # the same shorts as the front
     fill(g, 'm', lambda x, y: thigh(x, y) and y >= 46.5 and seg(19.0, 47.5, 18.8, 56.5, 0.4)(x, y))  # hamstring split
     fill(g, 'l', lambda x, y: calf(x, y) and seg(18.6, 62.0, 18.6, 68.0, 0.4)(x, y))  # two calf heads
     return g
