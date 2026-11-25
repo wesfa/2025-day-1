@@ -109,6 +109,47 @@ export const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
 export const isAndroid = () => /Android/i.test(navigator.userAgent);
 export const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
-export function buzz(pattern = 15) {
-  try { navigator.vibrate && navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+// ---------- Haptics ----------
+// Android and most browsers: the Vibration API. iPhone Safari has no vibrate(), but on iOS 18+ flipping a native
+// switch control plays the system "tick", so we keep one hidden switch and click its label. Older iPhones stay quiet.
+export const HAPTIC = { tap: 8, press: 14, success: [14, 80, 22], warn: [24, 60, 24, 60, 24] };
+let hapticsOn = true;
+let hapticCount = 0;
+let iosSwitch = null;
+export function setHaptics(on) { hapticsOn = on !== false; }
+export const hapticsUsed = () => hapticCount;
+
+function iosTick() {
+  if (!iosSwitch) {
+    const label = document.createElement('label');
+    label.setAttribute('aria-hidden', 'true');
+    label.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('switch', '');
+    input.tabIndex = -1;
+    label.appendChild(input);
+    // keep these synthetic clicks away from the app's own tap handling
+    for (const ev of ['click', 'change', 'input']) label.addEventListener(ev, (e) => e.stopPropagation());
+    document.body.appendChild(label);
+    iosSwitch = label;
+  }
+  iosSwitch.click();
+}
+
+// buzz(ms) or buzz([on, off, on, ...]). On iPhone each "on" part becomes one tick (up to three).
+export function buzz(pattern = HAPTIC.press) {
+  if (!hapticsOn) return;
+  hapticCount++;
+  try {
+    if (typeof navigator.vibrate === 'function') { navigator.vibrate(pattern); return; }
+    if (!isIOS()) return;
+    const p = Array.isArray(pattern) ? pattern : [pattern];
+    iosTick();  // the first tick right away, while the tap still counts as a user action
+    let t = 0;
+    for (let i = 2; i < p.length && i <= 4; i += 2) {
+      t += Math.max(90, (p[i - 2] || 0) + (p[i - 1] || 0));
+      setTimeout(iosTick, t);
+    }
+  } catch (e) { /* haptics are a nice-to-have */ }
 }

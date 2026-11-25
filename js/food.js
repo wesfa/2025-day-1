@@ -9,7 +9,7 @@ const optNum = (v) => (v === '' || v == null || !Number.isFinite(parseFloat(v)) 
 // Fiber and potassium are goals (going past is fine); sodium is a max. One short note only when needed.
 export function microStrip(t, tg) {
   const cell = ([m, l, u]) => `<div class="mi">
-      <span class="mi-l">${m === 'na' ? 'Sodium (max)' : l}</span>
+      <span class="mi-l c-${m}">${m === 'na' ? 'Sodium (max)' : l}</span>
       ${bar(t[m], tg[m], { cls: 'mini m-' + m, cap: m === 'na', label: l })}
       <span class="mi-v">${u === 'g' ? r0(t[m]) : fmt(t[m])}/${fmt(tg[m])}${u}</span>
     </div>`;
@@ -19,7 +19,7 @@ export function microStrip(t, tg) {
   return `<div class="micro-strip">${MICROS.map(cell).join('')}</div>${notes.length ? `<p class="micro-note">${notes.join(' · ')}</p>` : ''}`;
 }
 import { FOODS, FOOD_CATEGORIES } from './foods.js';
-import { dayKey, addDays, prettyDay, esc, r0, r1, num, fmt, uid, buzz } from './util.js';
+import { dayKey, addDays, prettyDay, esc, r0, r1, num, fmt, uid, buzz, HAPTIC } from './util.js';
 import { win, group, bar, btn, field, numInput, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, promptBox, formData } from './ui.js';
 import { icon } from './icons.js';
 import { openAI } from './ai.js';
@@ -34,7 +34,7 @@ export function mealForNow() {
   return 'Snacks';
 }
 
-const macroLine = (o, q = 1) => `<span class="mac">P ${r0(o.p * q)} · C ${r0(o.c * q)} · F ${r0(o.f * q)}</span>`;
+const macroLine = (o, q = 1) => `<span class="mac"><span class="c-p">P ${r0(o.p * q)}</span> · <span class="c-c">C ${r0(o.c * q)}</span> · <span class="c-f">F ${r0(o.f * q)}</span></span>`;
 
 // ================= Diary screen =================
 export function renderFood() {
@@ -75,7 +75,7 @@ export function renderFood() {
       <div class="sum-row"><span>Eaten <b class="vt">${fmt(t.cal)}</b></span><span>Goal <b class="vt">${fmt(tg.cal)}</b></span><span>${left >= 0 ? 'Left' : 'Over'} <b class="vt ${left < 0 ? 'bad' : ''}">${fmt(Math.abs(left))}</b></span></div>
       ${bar(t.cal, tg.cal)}
       <div class="mac-grid">
-        ${['p', 'c', 'f'].map((m) => `<div><span class="mac-l">${{ p: 'Protein', c: 'Carbs', f: 'Fat' }[m]}</span>${bar(t[m], tg[m], { cls: 'thin m-' + m })}<span class="mac-v">${r0(t[m])}/${tg[m]}g</span></div>`).join('')}
+        ${['p', 'c', 'f'].map((m) => `<div><span class="mac-l c-${m}">${{ p: 'Protein', c: 'Carbs', f: 'Fat' }[m]}</span>${bar(t[m], tg[m], { cls: 'thin m-' + m })}<span class="mac-v"><b class="c-${m}">${r0(t[m])}</b>/${tg[m]}g</span></div>`).join('')}
       </div>
       ${microStrip(t, tg)}
     </div>
@@ -236,7 +236,7 @@ on({
     if (!m) return;
     const d = day(af.date);
     for (const it of m.items) d.food.push({ ...it, id: uid(), meal: af.meal, t: Date.now() });
-    save(); buzz(); toast(`Added "${esc(m.name)}" to ${af.meal}`);
+    save(); buzz(HAPTIC.success); toast(`Added "${esc(m.name)}" to ${af.meal}`);
     closeAllModals(); rerender();
   },
   'del-saved-meal': async (el) => {
@@ -293,8 +293,8 @@ function renderFoodDetail() {
 function fdMacros() {
   const f = fd.food; const q = fd.qty;
   return `<div class="big-cal"><b class="vt">${fmt(f.cal * q)}</b> kcal</div>
-    <div class="mac3"><span>Protein<b class="vt">${r1(f.p * q)}g</b></span><span>Carbs<b class="vt">${r1(f.c * q)}g</b></span><span>Fat<b class="vt">${r1(f.f * q)}g</b></span></div>
-    <div class="mac3 micro3">${MICROS.map(([m, l, u]) => `<span>${l}<b class="vt">${known(f[m]) ? (u === 'g' ? r1(f[m] * q) : fmt(f[m] * q)) + u : '-'}</b></span>`).join('')}</div>`;
+    <div class="mac3"><span class="c-p">Protein<b class="vt">${r1(f.p * q)}g</b></span><span class="c-c">Carbs<b class="vt">${r1(f.c * q)}g</b></span><span class="c-f">Fat<b class="vt">${r1(f.f * q)}g</b></span></div>
+    <div class="mac3 micro3">${MICROS.map(([m, l, u]) => `<span class="c-${m}">${l}<b class="vt">${known(f[m]) ? (u === 'g' ? r1(f[m] * q) : fmt(f[m] * q)) + u : '-'}</b></span>`).join('')}</div>`;
 }
 
 on({
@@ -333,7 +333,7 @@ on({
       save(); toast('Saved');
     } else {
       addEntry(fd.date, fd.food, fd.qty, fd.meal);
-      buzz();
+      buzz(HAPTIC.success);
       toast(`Added ${esc(fd.food.name)} (${fmt(fd.food.cal * fd.qty)} kcal)`);
     }
     closeAllModals(); rerender();
@@ -394,7 +394,7 @@ on({
     const kcal = cal || p * 4 + c * 4 + f * 9;
     if (!kcal) { toast('Enter calories or macros', 'warn'); return; }
     addEntry(el.dataset.date || dayKey(), { id: '', name: v.name.trim() || 'Quick add', serving: 'entry', cal: kcal, p, c, f, fib: optNum(v.fib), na: optNum(v.na), pot: optNum(v.pot) }, 1, v.meal);
-    buzz(); toast(`Added ${fmt(kcal)} kcal`); closeAllModals(); rerender();
+    buzz(HAPTIC.success); toast(`Added ${fmt(kcal)} kcal`); closeAllModals(); rerender();
   },
   'cf-save': () => {
     const v = formData(document.getElementById('cf'));

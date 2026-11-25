@@ -1,7 +1,7 @@
 // Weight: daily weigh-in, trend, projection, pixel chart.
 import { S, save, weightEntries, latestWeight, avgWeight, targets } from './store.js';
 import { weeklyRate } from './calc.js';
-import { dayKey, addDays, prettyDay, shortDate, esc, r1, num, daysBetween, parseDay, buzz } from './util.js';
+import { dayKey, addDays, prettyDay, shortDate, esc, r1, num, daysBetween, parseDay, buzz, HAPTIC } from './util.js';
 import { win, group, bar, btn, field, on, rerender, toast, confirmBox } from './ui.js';
 import { icon } from './icons.js';
 
@@ -12,7 +12,7 @@ export function logWeight(key, lb) {
   if (!(lb > 50 && lb < 600)) { toast('Enter a real weight (lb)', 'warn'); return false; }
   S.weights[key] = Math.round(lb * 10) / 10;
   save(true);
-  buzz(25);
+  buzz(HAPTIC.success);
   if (navigator.clearAppBadge && key === dayKey()) navigator.clearAppBadge().catch(() => {});
   return true;
 }

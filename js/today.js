@@ -125,9 +125,9 @@ export function renderToday() {
     <div class="mac-grid today-macs">
       ${[['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([m, l]) => `
         <div class="macro">
-          <span class="mac-l">${l}</span>
+          <span class="mac-l c-${m}">${l}</span>
           ${bar(t[m], tg[m], { cls: 'thin m-' + m, label: l })}
-          <span class="mac-v"><b class="vt">${r0(t[m])}</b>/${tg[m]}g</span>
+          <span class="mac-v"><b class="vt c-${m}">${r0(t[m])}</b>/${tg[m]}g</span>
         </div>`).join('')}
     </div>
     ${microStrip(t, tg)}
@@ -136,8 +136,8 @@ export function renderToday() {
   ${win('Log Food', `
     ${btn('Snap a photo - AI logs it', 'ai-open', { cls: 'primary wide ai-cta', ico: 'camera', data: `data-meal="${mealForNow()}"` })}
     <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}"><span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
-    ${sug.length ? `<div class="sub-head">Coach says: ${left.p > 20 ? `you need <b>${r0(left.p)}g protein</b>` : `<b>${fmt(left.cal)} kcal</b> left`}. Try:</div>
-      <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · ${r0(f.p)}g P</small><b>+</b></button>`).join('')}</div>` : ''}
+    ${sug.length ? `<div class="sub-head">Coach says: ${left.p > 20 ? `you need <b class="c-p">${r0(left.p)}g protein</b>` : `<b>${fmt(left.cal)} kcal</b> left`}. Try:</div>
+      <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · <span class="c-p">${r0(f.p)}g P</span></small><b>+</b></button>`).join('')}</div>` : ''}
     ${left.cal < -300 && tg.dir < 0 ? '<p class="muted small">Over today. No stress - one day doesn\'t matter, the weekly average does.</p>' : ''}
   `, { ico: 'burger' })}
 

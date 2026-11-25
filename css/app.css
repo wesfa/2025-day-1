@@ -36,6 +36,7 @@
   --mc: #008080;
   --mf: #808000;
   --water: #1084d0;
+  --mfib: #5f8f2a; --mna: #5d7aa8; --mpot: #8e5cc4;
   --done: #d9f2d9;
   --tb-h: 54px;
 }
@@ -273,9 +274,9 @@ input[type="time"].inp { min-width: 0; }
 .progress.m-p .fill { background: repeating-linear-gradient(90deg, var(--mp) 0 8px, transparent 8px 10px); }
 .progress.m-c .fill { background: repeating-linear-gradient(90deg, var(--mc) 0 8px, transparent 8px 10px); }
 .progress.m-f .fill { background: repeating-linear-gradient(90deg, var(--mf) 0 8px, transparent 8px 10px); }
-.progress.m-fib .fill { background: repeating-linear-gradient(90deg, #5f8f2a 0 8px, transparent 8px 10px); }
-.progress.m-na .fill { background: repeating-linear-gradient(90deg, #5d7aa8 0 8px, transparent 8px 10px); }
-.progress.m-pot .fill { background: repeating-linear-gradient(90deg, #8e5cc4 0 8px, transparent 8px 10px); }
+.progress.m-fib .fill { background: repeating-linear-gradient(90deg, var(--mfib) 0 8px, transparent 8px 10px); }
+.progress.m-na .fill { background: repeating-linear-gradient(90deg, var(--mna) 0 8px, transparent 8px 10px); }
+.progress.m-pot .fill { background: repeating-linear-gradient(90deg, var(--mpot) 0 8px, transparent 8px 10px); }
 .progress.over .fill { background: repeating-linear-gradient(90deg, var(--bad) 0 8px, transparent 8px 10px) !important; }
 
 /* ---------- Panels & lists ---------- */
@@ -804,14 +805,15 @@ html[data-theme="meadow"] { background: #1e56d6; }
    Art is 1 art px = 2 CSS px. Everything below is scoped to [data-theme="dusk"].
    ===================================================================================== */
 [data-theme="dusk"] {
-  --desk: #1c1410; --face: rgba(22, 14, 10, 0.84); --solid: #1d130d;
+  --desk: #1c1410; --face: rgba(22, 14, 10, 0.87); --solid: #1d130d;
   --light: rgba(255, 165, 60, 0.10); --hi: rgba(255, 165, 60, 0.14); --lo: rgba(255, 165, 60, 0.22); --dk: rgba(0, 0, 0, 0.6);
   --line: rgba(255, 165, 60, 0.26); --line-soft: rgba(255, 165, 60, 0.14);
-  --text: #f3dcb8; --muted: #b48c64; --field: rgba(0, 0, 0, 0.32);
+  --text: #f6e3c4; --muted: #cba982; --field: rgba(0, 0, 0, 0.34);
   --title1: transparent; --title2: transparent; --title-text: #ffa53c;
   --accent: #ffa53c; --accent-text: #1a0f08;
   --good: #b9cf72; --bad: #ff6b4a; --grid: rgba(255, 165, 60, 0.12); --tip: rgba(255, 165, 60, 0.09);
-  --mp: #ffa53c; --mc: #dd5f2c; --mf: #f0d892; --water: #ffa53c; --done: rgba(185, 207, 114, 0.16);
+  --mp: #5cc8ff; --mc: #7ddc5a; --mf: #ff8ab8; --mfib: #4fd3a8; --mna: #a8bcff; --mpot: #e2a8ff;  /* protein blue, carbs green, fat pink */
+  --water: #ffa53c; --done: rgba(185, 207, 114, 0.16);
   --wl: 30%;  /* waterline, measured from the bottom of the screen */
 }
 html[data-theme="dusk"] { background: #1c1410; }
@@ -912,7 +914,7 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
   #city .cl-ref-b, #city .cx-stars.b, #city .cx-birds b.f2 { display: none; }
 }
 /* panels pick up a little of the sky: cool slate by day, deeper at night */
-[data-theme="dusk"][data-sky="day"] { --face: rgba(14, 22, 34, 0.82); --field: rgba(0, 8, 20, 0.34); }
+[data-theme="dusk"][data-sky="day"] { --face: rgba(14, 22, 34, 0.86); --field: rgba(0, 8, 20, 0.36); }
 [data-theme="dusk"][data-sky="golden"] { --face: rgba(30, 20, 26, 0.84); }
 [data-theme="dusk"][data-sky="dawn"] { --face: rgba(26, 16, 30, 0.84); }
 [data-theme="dusk"][data-sky="night"] { --face: rgba(9, 11, 19, 0.86); }
@@ -968,9 +970,12 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 [data-theme="dusk"] .progress.m-p .fill { background: repeating-linear-gradient(90deg, var(--mp) 0 6px, transparent 6px 8px); }
 [data-theme="dusk"] .progress.m-c .fill { background: repeating-linear-gradient(90deg, var(--mc) 0 6px, transparent 6px 8px); }
 [data-theme="dusk"] .progress.m-f .fill { background: repeating-linear-gradient(90deg, var(--mf) 0 6px, transparent 6px 8px); }
-[data-theme="dusk"] .progress.m-fib .fill { background: repeating-linear-gradient(90deg, #9fb35a 0 4px, transparent 4px 6px); }
-[data-theme="dusk"] .progress.m-na .fill { background: repeating-linear-gradient(90deg, #8fa3b8 0 4px, transparent 4px 6px); }
-[data-theme="dusk"] .progress.m-pot .fill { background: repeating-linear-gradient(90deg, #c48fb4 0 4px, transparent 4px 6px); }
+[data-theme="dusk"] .progress.m-fib .fill { background: repeating-linear-gradient(90deg, var(--mfib) 0 4px, transparent 4px 6px); }
+[data-theme="dusk"] .progress.m-na .fill { background: repeating-linear-gradient(90deg, var(--mna) 0 4px, transparent 4px 6px); }
+[data-theme="dusk"] .progress.m-pot .fill { background: repeating-linear-gradient(90deg, var(--mpot) 0 4px, transparent 4px 6px); }
+/* coloured nutrient labels read a touch brighter than plain hint text */
+[data-theme="dusk"] .mi-l.c-fib, [data-theme="dusk"] .mi-l.c-na, [data-theme="dusk"] .mi-l.c-pot { opacity: 0.92; }
+[data-theme="dusk"] .mac-v b { font-weight: 400; }
 [data-theme="dusk"] .progress.over .fill { background: repeating-linear-gradient(90deg, var(--bad) 0 6px, transparent 6px 8px) !important; }
 
 /* lists, panels, tabs, tips */
@@ -1029,3 +1034,7 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 @media (max-width: 480px) {
   [data-theme="dusk"] .wiz-side { background-position: -30px bottom, center bottom 18px, 70% 10px, left bottom, 0 0; background-size: 384px 150px, 300px 132px, 30px 30px, 8px 640px, auto; }
 }
+
+/* Each nutrient keeps its own colour in labels and numbers, matching its bar (kept last so it beats hint-text greys) */
+html .c-p { color: var(--mp); } html .c-c { color: var(--mc); } html .c-f { color: var(--mf); }
+html .c-fib { color: var(--mfib); } html .c-na { color: var(--mna); } html .c-pot { color: var(--mpot); }

@@ -49,6 +49,15 @@ training day, and any day can be switched on Today.
 - Restore points are taken automatically: before every app update and once a day (the last 14 are kept). **Control Panel → Restore points → Add back** merges one in.
 - **Import backup** defaults to **Merge**, which adds what's missing and never deletes what's on the phone. **Replace** is still available and asks twice.
 
+## Feel
+
+- **Haptics:** important taps give a little tick: main buttons, the taskbar, the Start menu, meal buttons, suggestions,
+  tabs, set check-offs and confirmations. Saving food or a weigh-in gives a double tick, and a new PR gives a triple.
+  Android uses the Vibration API. iPhone Safari has none, so on iOS 18+ the app flips a hidden native switch, which plays
+  the system tick. Turn it off in **Control Panel → Appearance**.
+- **Nutrient colours:** protein, carbs and fat (and fiber, sodium, potassium) keep their own colour in bars, labels and
+  numbers everywhere. Under the City scheme that's blue, green and pink, so they stand out from the amber UI.
+
 ## Live sky
 
 The City scheme paints the same city five ways (dawn, day, golden hour, dusk, night) and cross-fades between them

@@ -2,7 +2,7 @@
 // Calls the Claude API straight from the phone with the user's own API key.
 // The key is stored separately from app data, so it never ends up in backup files.
 import { S, save, addEntry, MEALS } from './store.js';
-import { dayKey, esc, r0, num, uid, fmt, prettyDay, buzz } from './util.js';
+import { dayKey, esc, r0, num, uid, fmt, prettyDay, buzz, HAPTIC } from './util.js';
 import { win, group, btn, field, select, on, openModal, closeAllModals, rerender, drawModals, toast, confirmBox } from './ui.js';
 import { icon } from './icons.js';
 
@@ -207,12 +207,12 @@ function renderAI() {
             <div class="ai-body">
               <input class="inp ai-name" value="${esc(x.name)}" data-change="ai-item" data-i="${i}" data-k="name" aria-label="Food name">
               <small class="muted">${esc(x.portion)}</small>
-              <div class="ai-nums">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<label><span>${l}</span><input class="inp" type="number" inputmode="decimal" value="${r0(x[k])}" data-change="ai-item" data-i="${i}" data-k="${k}"></label>`).join('')}</div>
+              <div class="ai-nums">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<label><span class="c-${k}">${l}</span><input class="inp" type="number" inputmode="decimal" value="${r0(x[k])}" data-change="ai-item" data-i="${i}" data-k="${k}"></label>`).join('')}</div>
               <div class="ai-nums three">${[['fib', 'Fiber g'], ['na', 'Sodium mg'], ['pot', 'Potass. mg']].map(([k, l]) => `<label><span>${l}</span><input class="inp" type="number" inputmode="decimal" value="${r0(x[k])}" data-change="ai-item" data-i="${i}" data-k="${k}"></label>`).join('')}</div>
             </div>
           </div>`).join('')}
       </div>
-      <div class="ai-total"><b>Total</b><span><b class="vt">${fmt(t.cal)}</b> kcal</span><span>P ${r0(t.p)}g · C ${r0(t.c)}g · F ${r0(t.f)}g</span><span class="muted small">Fiber ${r0(t.fib)}g · Sodium ${fmt(t.na)}mg · Potassium ${fmt(t.pot)}mg</span></div>` : '<p class="empty">No food found.</p>'}
+      <div class="ai-total"><b>Total</b><span><b class="vt">${fmt(t.cal)}</b> kcal</span><span><span class="c-p">P ${r0(t.p)}g</span> · <span class="c-c">C ${r0(t.c)}g</span> · <span class="c-f">F ${r0(t.f)}g</span></span><span class="muted small">Fiber ${r0(t.fib)}g · Sodium ${fmt(t.na)}mg · Potassium ${fmt(t.pot)}mg</span></div>` : '<p class="empty">No food found.</p>'}
       ${ai.notes ? `<p class="why">${esc(ai.notes)}</p>` : ''}
       <p class="muted small">Numbers look off? Fix them above, or add details to the description and tap Analyze again. This one cost about ${ai.cost < 0.01 ? 'less than 1 cent' : `${(ai.cost * 100).toFixed(1)} cents`}.</p>
       ${on.length ? `<div class="btn-row">${btn(`Add ${on.length} item${on.length > 1 ? 's' : ''} to ${esc(ai.meal)}`, 'ai-add', { cls: 'primary grow', ico: 'check' })}</div>` : ''}`);
@@ -302,6 +302,7 @@ on({
       const food = { id: 'ai:' + uid(), name: x.name, serving: x.portion || '1 serving', cal: r0(x.cal), p: r0(x.p), c: r0(x.c), f: r0(x.f), fib: opt(x.fib), na: opt(x.na), pot: opt(x.pot), cat: 'AI estimate' };
       addEntry(ai.date, food, 1, ai.meal);
     }
+    buzz(HAPTIC.success);
     toast(`Added ${on.length} item${on.length > 1 ? 's' : ''} to ${esc(ai.meal)}`, 'check');
     closeAllModals(); rerender();
   },

@@ -2,7 +2,7 @@
 import { S, save, getEx, allExercises, activeWorkout, doneWorkouts, lastSetsFor, nextTemplate } from './store.js';
 import { EX_CATS, SET_LABELS, DEFAULT_TEMPLATES } from './program.js';
 import { e1rm, platesFor } from './calc.js';
-import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, buzz } from './util.js';
+import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, buzz, HAPTIC } from './util.js';
 import { win, group, btn, field, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
 import { icon } from './icons.js';
 
@@ -228,6 +228,7 @@ on({
     w.ex = w.ex.filter((e) => e.sets.length);
     S.activeId = null;
     save(true); stopRest();
+    buzz(prs.length ? [14, 70, 14, 70, 30] : HAPTIC.success);  // a little celebration for a new PR
     go('#/gym');
     if (prs.length) beep([523, 659, 784, 1047], 0.13);
     await msgBox({

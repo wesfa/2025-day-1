@@ -3,7 +3,7 @@ import { S, save, targets, daySplit, currentWeight, replaceState, resetState, DE
 import { listSnapshots } from './vault.js';
 import { calcTargets, microTargets, PHASES } from './calc.js';
 import { busyOn, planFor, dateRule, blockKind, importSchedule, DATE_KINDS, buildICS, newTopic, syncPush, sendTest, untilText } from './reminders.js';
-import { dayKey, addDays, parseDay, prettyDay, shortDate, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid, isStandalone, toMin } from './util.js';
+import { dayKey, addDays, parseDay, prettyDay, shortDate, esc, r0, r1, num, uid, fmtTime, DOW, saveFile, isIOS, isAndroid, isStandalone, toMin, buzz, HAPTIC, setHaptics } from './util.js';
 import { win, group, btn, field, numInput, select, dayPicker, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, promptBox, formData } from './ui.js';
 import { icon } from './icons.js';
 import { resetProgram } from './gym.js';
@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.10.0';
+export const APP_VERSION = '1.11.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',
@@ -93,10 +93,10 @@ export function renderSettings() {
       <p class="small">Average day:</p>
       <div class="target-grid">
         <div class="stat sunken"><span>Calories</span><b class="vt">${tg.avgCal}</b></div>
-        <div class="stat sunken"><span>Protein</span><b class="vt">${tg.p}g</b></div>
-        <div class="stat sunken"><span>Carbs</span><b class="vt">${tg.avgC}g</b></div>
-        <div class="stat sunken"><span>Fat</span><b class="vt">${tg.f}g</b></div>
-        <div class="stat sunken"><span>Fiber</span><b class="vt">${tg.fib}g</b></div>
+        <div class="stat sunken"><span class="c-p">Protein</span><b class="vt c-p">${tg.p}g</b></div>
+        <div class="stat sunken"><span class="c-c">Carbs</span><b class="vt c-c">${tg.avgC}g</b></div>
+        <div class="stat sunken"><span class="c-f">Fat</span><b class="vt c-f">${tg.f}g</b></div>
+        <div class="stat sunken"><span class="c-fib">Fiber</span><b class="vt">${tg.fib}g</b></div>
         <div class="stat sunken"><span>Sodium (max)</span><b class="vt">${fmtN(tg.na - tg.naExtra)}mg</b></div>
         <div class="stat sunken"><span>Potassium</span><b class="vt">${fmtN(tg.pot)}mg</b></div>
       </div>
@@ -130,6 +130,8 @@ export function renderSettings() {
 
     ${group('Appearance', `
       ${field('Color scheme', select('theme', Object.entries(THEMES), S.settings.theme, { data: 'data-change="theme"' }))}
+      <label class="check"><input type="checkbox" data-change="set-haptics" ${S.settings.haptics !== false ? 'checked' : ''}><span>Little vibrations on important taps</span></label>
+      <p class="muted small" style="margin-top:-4px">On iPhone this needs iOS 18 or newer.</p>
       <label class="check"><input type="checkbox" data-change="set-sound" ${S.settings.sound ? 'checked' : ''}><span>Beep when rest timer ends</span></label>
       <label class="check"><input type="checkbox" data-change="set-restauto" ${S.settings.restAuto ? 'checked' : ''}><span>Start rest timer when I check off a set</span></label>`)}
 
@@ -179,6 +181,7 @@ on({
   },
   theme: (el) => { S.settings.theme = el.value; save(); applyTheme(); rerender(); },
   'set-sound': (el) => { S.settings.sound = el.checked; save(); },
+  'set-haptics': (el) => { S.settings.haptics = el.checked; save(); setHaptics(el.checked); if (el.checked) buzz(HAPTIC.success); },
   'set-daytargets': (el) => { S.settings.dayTargets = el.checked; save(); rerender(); },
   'set-liftdays': () => {
     S.settings.liftDays = [...document.querySelectorAll('input[name="liftDays"]:checked')].map((x) => Number(x.value)).sort();

@@ -3,7 +3,7 @@ import { S, save, activeWorkout, rawAtLoad, replaceState, enableMirror } from '.
 import { readMirror, snapshot } from './vault.js';
 import { actions, on, setRerender, setNavigate, go, drawModals, closeAllModals, modalOpen, msgBox, toast, unlockAudio } from './ui.js';
 import { icon } from './icons.js';
-import { dayKey, clockNow, esc, isStandalone } from './util.js';
+import { dayKey, clockNow, esc, isStandalone, buzz, HAPTIC, hapticsUsed, setHaptics } from './util.js';
 import { renderToday } from './today.js';
 import { renderFood, view as foodView } from './food.js';
 import { renderGym, renderWorkout, tickWorkoutClock } from './gym.js';
@@ -154,8 +154,25 @@ document.addEventListener('click', (e) => {
   if (el.disabled) return;
   if ($start.classList.contains('open') && !el.closest('#startmenu') && el.dataset.act !== 'start') toggleStart(false);
   const fn = actions[el.dataset.act];
-  if (fn) { e.preventDefault(); fn(el, e); }
+  if (fn) {
+    e.preventDefault();
+    const before = hapticsUsed();
+    fn(el, e);
+    if (hapticsUsed() === before) { const k = hapticFor(el); if (k) buzz(HAPTIC[k]); }
+  }
 });
+
+// Which presses get a little tick: main buttons, navigation, logging and confirmations - not every control.
+const TICK_ACTS = new Set(['nav', 'start', 'open-add', 'sug-add', 'day-set', 'pick-food', 'quick-add', 'ai-open', 'start-tpl',
+  'go-workout', 'diary-day', 'diary-today', 'scan-barcode', 'fav', 'rest-skip', 'rest-add', 'weekly']);
+function hapticFor(el) {
+  const act = el.dataset.act;
+  if (el.classList.contains('danger')) return 'warn';
+  if (el.closest('.modal-wrap') && el.dataset.v === 'true') return 'press';  // "Yes" in a confirm box
+  if (el.classList.contains('primary')) return 'press';
+  if (TICK_ACTS.has(act) || el.classList.contains('task') || el.classList.contains('sm-item') || el.classList.contains('tab') || el.classList.contains('meal-btn') || el.classList.contains('chk')) return 'tap';
+  return null;
+}
 document.addEventListener('change', (e) => {
   const el = e.target.closest('[data-change]');
   if (el && actions[el.dataset.change]) actions[el.dataset.change](el, e);
@@ -301,6 +318,7 @@ async function protectData() {
 }
 
 applyTheme();
+setHaptics(S.settings.haptics);
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 render();
 protectData().finally(() => syncPush().catch(() => {}));
