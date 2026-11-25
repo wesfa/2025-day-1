@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.12.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',
@@ -31,6 +31,18 @@ export function applyTheme() {
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--desk').trim();
   if (meta && bg) meta.setAttribute('content', bg);
   setSkyActive(document.documentElement.dataset.theme === 'dusk');  // the City scheme follows the real sky
+}
+
+// Control Panel categories: only one set of settings on screen at a time (remembered while the app is open).
+// #/settings?c=look (etc.) opens a category directly.
+const CP_CATS = [['me', 'Profile', 'scale'], ['targets', 'Targets', 'trophy'], ['look', 'Look & sky', 'sun'],
+  ['ai', 'AI scanner', 'camera'], ['data', 'Backup', 'floppy'], ['more', 'More', 'gear']];
+const CP_KEY = 'macros:cp-cat';
+function cpCategory() {
+  const q = new URLSearchParams((location.hash.split('?')[1]) || '').get('c');
+  let c = q;
+  if (!c) { try { c = sessionStorage.getItem(CP_KEY); } catch (e) { /* ignore */ } }
+  return CP_CATS.some(([k]) => k === c) ? c : 'me';
 }
 
 // The City scheme's wallpaper follows the real sun and weather; this group sets where "here" is.
@@ -72,8 +84,11 @@ export function renderSettings() {
   const lastB = S.settings.lastBackup;
   const backupAge = lastB ? Math.floor((Date.now() - lastB) / 86400000) : null;
 
+  const cat = cpCategory();
+  const show = (c, html) => (c === cat ? html : '');
   return win('Control Panel', `
-    ${group('Profile', `
+    <div class="cp-cats" role="tablist">${CP_CATS.map(([k, l, ic]) => `<button class="btn cp-cat ${k === cat ? 'on' : ''}" role="tab" aria-selected="${k === cat}" data-act="cp-cat" data-c="${k}">${icon(ic, 16)}<span>${l}</span></button>`).join('')}</div>
+    ${show('me', group('Profile', `
       <form id="prof" onsubmit="return false">
         <div class="grid2">
           ${field('Name', `<input class="inp" name="name" value="${esc(p.name)}" placeholder="Your name">`)}
@@ -87,9 +102,9 @@ export function renderSettings() {
         </div>
         ${field('Training phase', select('phase', Object.entries(PHASES).map(([k, v]) => [k, v.label]), p.phase))}
         <div class="btn-row">${btn('Save profile', 'prof-save', { cls: 'primary grow', type: 'submit' })}</div>
-      </form>`)}
+      </form>`))}
 
-    ${group('Daily targets', `
+    ${show('targets', group('Daily targets', `
       <p class="small">Average day:</p>
       <div class="target-grid">
         <div class="stat sunken"><span>Calories</span><b class="vt">${tg.avgCal}</b></div>
@@ -108,9 +123,9 @@ export function renderSettings() {
         ${field('Fiber g', numInput('fib', S.targets.fib ?? tg.fib))}${field('Sodium max mg', numInput('na', S.targets.na ?? (tg.na - tg.naExtra)))}
         ${field('Potassium mg', numInput('pot', S.targets.pot ?? tg.pot))}</div>
         <div class="btn-row">${btn('Save targets', 't-save', { cls: 'primary grow', type: 'submit' })}</div></form>`}
-      <p class="muted small">Coach or nutritionist gave you numbers? Turn off auto and type them in.</p>`)}
+      <p class="muted small">Coach or nutritionist gave you numbers? Turn off auto and type them in.</p>`))}
 
-    ${group('Training days vs rest days', (() => {
+    ${show('targets', group('Training days vs rest days', (() => {
       const sp = daySplit(tg.avgCal);
       const days = S.settings.liftDays || [];
       return `
@@ -122,37 +137,37 @@ export function renderSettings() {
         </div>
         <p class="muted small">Same weekly total as eating the average every day - just moved toward the days you train. The extra is carbs to fuel the session; protein and fat stay the same. Finishing a workout makes that day a training day automatically, and you can switch any day on Today. The Lift day reminder goes off on these days.</p>`
       : `<p class="muted small">${S.settings.dayTargets ? 'Pick at least one (and not all seven) training days to split targets.' : 'Off: every day uses the average target.'}</p>`}`;
-    })())}
+    })()))}
 
-    ${aiSettingsGroup()}
+    ${show('ai', aiSettingsGroup())}
 
-    ${group('Reminders', `<p>Weigh-in, meal, and gym reminders that skip school and work hours.</p>${btn('Open Reminders', 'nav', { data: 'data-to="#/reminders"', ico: 'bell', cls: 'wide' })}`)}
+    ${show('more', group('Reminders', `<p>Weigh-in, meal, and gym reminders that skip school and work hours.</p>${btn('Open Reminders', 'nav', { data: 'data-to="#/reminders"', ico: 'bell', cls: 'wide' })}`))}
 
-    ${group('Appearance', `
+    ${show('look', group('Appearance', `
       ${field('Color scheme', select('theme', Object.entries(THEMES), S.settings.theme, { data: 'data-change="theme"' }))}
       <label class="check"><input type="checkbox" data-change="set-haptics" ${S.settings.haptics !== false ? 'checked' : ''}><span>Little vibrations on important taps</span></label>
       <p class="muted small" style="margin-top:-4px">On iPhone this needs iOS 18 or newer.</p>
       <label class="check"><input type="checkbox" data-change="set-sound" ${S.settings.sound ? 'checked' : ''}><span>Beep when rest timer ends</span></label>
-      <label class="check"><input type="checkbox" data-change="set-restauto" ${S.settings.restAuto ? 'checked' : ''}><span>Start rest timer when I check off a set</span></label>`)}
+      <label class="check"><input type="checkbox" data-change="set-restauto" ${S.settings.restAuto ? 'checked' : ''}><span>Start rest timer when I check off a set</span></label>`))}
 
-    ${group('Live sky', liveSkyGroup())}
+    ${show('look', group('Live sky', liveSkyGroup()))}
 
-    ${group('Backup', `
+    ${show('data', group('Backup', `
       <p class="muted small">Your data lives only on this phone. Export a backup now and then (save it to Files / Drive) so you never lose your history.${backupAge != null ? ` Last backup: ${backupAge === 0 ? 'today' : backupAge + ' days ago'}.` : ' No backup yet.'}</p>
       <div class="btn-row">${btn('Export backup', 'backup-export', { ico: 'floppy' })}${btn('Import backup', 'backup-import')}</div>
       <input type="file" id="backup-file" accept=".json,application/json,text/plain" hidden data-change="backup-file">
       <p class="muted small">Importing a backup adds back anything missing - it won't delete what's on the phone now.</p>
       <div class="btn-row">${btn('Restore points', 'snap-list', { ico: 'hourglass' })}</div>
-      <p class="muted small">Macros also saves a restore point every day and before every update, right on this phone.</p>`)}
+      <p class="muted small">Macros also saves a restore point every day and before every update, right on this phone.</p>`))}
 
-    ${group('Program', `<p class="muted small">Restore the default DE/DT 4-day program (your workout history is kept).</p>${btn('Reset program to default', 'reset-program')}`)}
+    ${show('more', group('Program', `<p class="muted small">Restore the default DE/DT 4-day program (your workout history is kept).</p>${btn('Reset program to default', 'reset-program')}`))}
 
-    ${group('App', `
+    ${show('more', group('App', `
       <p>MACROS v${APP_VERSION}${isStandalone() ? ' · installed' : ''}</p>
       <div class="btn-row">${btn('Add to Home Screen', 'install-help', { ico: 'phone' })}${btn('Check for update', 'check-update')}</div>
       <div class="btn-row">${btn('Erase all data', 'reset-all', { cls: 'danger' })}</div>
-      <p class="muted small">Calorie and macro targets are estimates for healthy athletes. If you're under 18, loop in your coach, athletic trainer, or doctor before big weight changes.</p>`)}
-  `, { ico: 'gear' });
+      <p class="muted small">Calorie and macro targets are estimates for healthy athletes. If you're under 18, loop in your coach, athletic trainer, or doctor before big weight changes.</p>`))}
+  `, { ico: 'gear', cls: 'cp' });
 }
 
 on({
@@ -180,6 +195,11 @@ on({
     save(); toast('Targets saved'); rerender();
   },
   theme: (el) => { S.settings.theme = el.value; save(); applyTheme(); rerender(); },
+  'cp-cat': (el) => {
+    try { sessionStorage.setItem(CP_KEY, el.dataset.c); } catch (e) { /* ignore */ }
+    if (location.hash.includes('?')) history.replaceState(null, '', '#/settings');
+    rerender(); window.scrollTo(0, 0);
+  },
   'set-sound': (el) => { S.settings.sound = el.checked; save(); },
   'set-haptics': (el) => { S.settings.haptics = el.checked; save(); setHaptics(el.checked); if (el.checked) buzz(HAPTIC.success); },
   'set-daytargets': (el) => { S.settings.dayTargets = el.checked; save(); rerender(); },

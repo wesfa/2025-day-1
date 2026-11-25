@@ -162,7 +162,7 @@ on({
       n = mergeInto(S, normalize(data));
       if (!S.setupDone) throw new Error('backup was never set up');
     } catch (e) {
-      msgBox({ title: 'Restore failed', text: "That file isn't a Macros backup. On the old copy, use Control Panel > Export backup." });
+      msgBox({ title: 'Restore failed', text: "That file isn't a Macros backup. On the old copy, use Control Panel > Backup > Export backup." });
       return;
     }
     save(true);

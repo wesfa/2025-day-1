@@ -88,12 +88,6 @@ function renderStart() {
   $start.innerHTML = `
     <div class="sm-side"><span>MACROS<b>98</b></span></div>
     <div class="sm-items">
-      ${item('#/today', 'Today', 'calendar')}
-      ${item('#/food', 'Food Diary', 'burger')}
-      ${item('#/gym', 'Gym', 'dumbbell')}
-      ${item('#/weight', 'Weight', 'scale')}
-      ${item('', 'AI Food Scanner', 'camera', 'sm-ai')}
-      <div class="sm-sep"></div>
       ${item('', 'Weekly Report', 'trophy', 'sm-weekly')}
       ${item('#/reminders', 'Reminders', 'bell')}
       ${item('', 'Exercise Library', 'book', 'sm-lib')}
@@ -164,7 +158,7 @@ document.addEventListener('click', (e) => {
 
 // Which presses get a little tick: main buttons, navigation, logging and confirmations - not every control.
 const TICK_ACTS = new Set(['nav', 'start', 'open-add', 'sug-add', 'day-set', 'pick-food', 'quick-add', 'ai-open', 'start-tpl',
-  'go-workout', 'diary-day', 'diary-today', 'scan-barcode', 'fav', 'rest-skip', 'rest-add', 'weekly']);
+  'go-workout', 'diary-day', 'diary-today', 'scan-barcode', 'fav', 'rest-skip', 'rest-add', 'weekly', 'set-add', 'ex-menu', 'cp-cat']);
 function hapticFor(el) {
   const act = el.dataset.act;
   if (el.classList.contains('danger')) return 'warn';

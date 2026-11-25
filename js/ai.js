@@ -118,7 +118,7 @@ async function analyze({ b64, desc }) {
     return { result: msg.parsed_output, cost };
   } catch (e) {
     const A = Anthropic;
-    if (e instanceof A.AuthenticationError) return { error: 'Your API key was rejected. Check it in Control Panel > AI Food Scanner.', badKey: true };
+    if (e instanceof A.AuthenticationError) return { error: 'Your API key was rejected. Check it in Control Panel > AI scanner.', badKey: true };
     if (e instanceof A.PermissionDeniedError) return { error: 'This API key isn\'t allowed to use that model. Try another model in Control Panel.' };
     if (e instanceof A.RateLimitError) return { error: 'Too many requests right now. Wait a minute and try again.' };
     if (e instanceof A.BadRequestError) return { error: `The API said: ${e.message}. If it mentions credit balance, add credits in the Claude Console.` };

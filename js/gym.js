@@ -3,7 +3,7 @@ import { S, save, getEx, allExercises, activeWorkout, doneWorkouts, lastSetsFor,
 import { EX_CATS, SET_LABELS, DEFAULT_TEMPLATES } from './program.js';
 import { e1rm, platesFor } from './calc.js';
 import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, buzz, HAPTIC } from './util.js';
-import { win, group, btn, field, select, on, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
+import { win, group, btn, field, select, on, actions, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
 import { icon } from './icons.js';
 
 const firstNum = (s) => { const m = String(s || '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
@@ -66,7 +66,7 @@ function startWorkout(tpl) {
   const w = {
     id: uid(), date: dayKey(), start: Date.now(), end: null,
     tid: tpl ? tpl.id : null, name: tpl ? tpl.name : 'Workout',
-    ex: tpl ? tpl.items.map((i) => makeExEntry(i.ex, i.sets, i.reps)) : [], notes: '',
+    ex: tpl ? tpl.items.map((i) => ({ ...makeExEntry(i.ex, 1, i.reps), target: i.reps ? `${i.sets} x ${i.reps}` : '' })) : [], notes: '',
   };
   S.workouts.push(w);
   S.activeId = w.id;
@@ -100,32 +100,30 @@ export function renderWorkout() {
     const ex = getEx(e.ex);
     const [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
     const last = lastSetsFor(e.ex, w.id);
-    const lastTxt = last ? last.sets.map((s) => (num(s.w) ? `${s.w}x${s.r}` : `${s.r}`)).join(', ') : '';
     const sug = overload(ex, e, last);
+    // SET | PREV (same set last time) | weight | reps | done. Fields start empty - you type what you did.
     const rows = e.sets.map((s, j) => {
-      const ls = last ? last.sets[Math.min(j, last.sets.length - 1)] : null;
-      const phW = sug && sug.up ? sug.w : ls && num(ls.w) ? ls.w : (ex.type === 'weight' ? '' : '0');
-      const phR = firstNum(e.tr) || (ls ? ls.r : '');
-      return `<div class="set ${s.done ? 'done' : ''}">
-        <span class="set-n">${j + 1}</span>
-        <input class="inp" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" placeholder="${esc(phW)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1}">
-        <input class="inp" type="number" inputmode="numeric" step="any" value="${esc(s.r)}" placeholder="${esc(phR)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="r" aria-label="${l2}">
-        <button class="btn sq chk ${s.done ? 'on' : ''}" data-act="set-done" data-i="${i}" data-j="${j}" aria-label="Done">${s.done ? icon('check', 16) : ''}</button>
+      const ls = last ? last.sets[j] : null;
+      const prev = ls ? (num(ls.w) ? `${ls.w} x ${ls.r}` : `${ls.r}`) : '-';
+      return `<div class="set-swipe" data-i="${i}" data-j="${j}">
+        <button class="set-trash" data-act="set-del" data-i="${i}" data-j="${j}" aria-label="Delete set ${j + 1}">${icon('trash', 20)}</button>
+        <div class="set ${s.done ? 'done' : ''}">
+          <span class="set-n">${j + 1}</span>
+          <span class="set-prev">${esc(prev)}</span>
+          <input class="inp" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1}">
+          <input class="inp" type="number" inputmode="numeric" step="any" value="${esc(s.r)}" data-change="set-val" data-i="${i}" data-j="${j}" data-k="r" aria-label="${l2}">
+          <button class="chk ${s.done ? 'on' : ''}" data-act="set-done" data-i="${i}" data-j="${j}" aria-label="${s.done ? 'Done - tap to undo' : 'Mark done'}">${icon('check', 16)}</button>
+        </div>
       </div>`;
     }).join('');
     return `<section class="group ex-block">
       <div class="group-title"><button class="link" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button></div>
-      <div class="ex-meta">${e.target ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${lastTxt ? `<span class="muted small">Last: ${esc(lastTxt)}</span>` : '<span class="muted small">First time - start light, own the form</span>'}</div>
+      <div class="ex-meta">${e.target ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last ? '' : '<span class="muted small">First time - start light, own the form</span>'}
+        <button class="ex-more" data-act="ex-menu" data-i="${i}" aria-label="More for ${esc(ex.name)}">&middot;&middot;&middot;</button></div>
       ${sug ? `<div class="coach-tip ${sug.up ? 'up' : ''}">${sug.up ? icon('up', 10) : ''} ${esc(sug.msg)}</div>` : ''}
-      <div class="set set-head"><span class="set-n">#</span><span>${l1}</span><span>${l2}</span><span></span></div>
+      <div class="set set-head"><span class="set-n">Set</span><span>Prev</span><span>${l1}</span><span>${l2}</span><span></span></div>
       ${rows}
-      <div class="btn-row tight">
-        ${btn('+ Set', 'set-add', { data: `data-i="${i}"` })}
-        ${btn('- Set', 'set-del', { data: `data-i="${i}"`, disabled: e.sets.length <= 1 })}
-        ${ex.type === 'weight' ? btn('', 'plate-calc-ex', { data: `data-i="${i}"`, ico: 'plate', cls: 'sq' }) : ''}
-        ${btn('', 'ex-up', { data: `data-i="${i}"`, ico: 'up', cls: 'sq', disabled: i === 0 })}
-        ${btn('', 'ex-remove', { data: `data-i="${i}"`, ico: 'close', cls: 'sq' })}
-      </div>
+      <button class="btn wide add-set" data-act="set-add" data-i="${i}">+ Add set</button>
     </section>`;
   }).join('');
 
@@ -155,45 +153,42 @@ on({
     const w = activeWorkout(); if (!w) return;
     const i = Number(el.dataset.i); const j = Number(el.dataset.j);
     const e = w.ex[i]; const s = e.sets[j];
-    // Read whatever is typed right now (change event may not have fired yet)
-    const row = el.closest('.set');
-    const [inW, inR] = row.querySelectorAll('input');
+    // read whatever is typed right now (the change event may not have fired yet)
+    const [inW, inR] = el.closest('.set').querySelectorAll('input');
     s.w = inW.value; s.r = inR.value;
     if (!s.done) {
-      if (s.w === '' && inW.placeholder !== '') s.w = inW.placeholder;
-      if (s.r === '' && inR.placeholder !== '') s.r = inR.placeholder;
-      if (s.r === '') { toast('Enter reps first', 'warn'); inR.focus(); return; }
+      if (s.r === '') { toast('Enter your reps first', 'warn'); inR.focus(); return; }
       s.done = true;
-      // carry weight forward into the next empty set
-      const nxt = e.sets[j + 1];
-      if (nxt && nxt.w === '' && s.w !== '') nxt.w = s.w;
-      buzz(20);
+      buzz(HAPTIC.press);
       if (S.settings.restAuto) startRest(getEx(e.ex).rest || 90);
     } else {
       s.done = false;
     }
     save(); rerender();
   },
+  // a new set copies the last set's numbers exactly, ready to check off
   'set-add': (el) => {
     const w = activeWorkout(); const e = w.ex[el.dataset.i];
+    const rowInputs = document.querySelectorAll(`[data-change="set-val"][data-i="${el.dataset.i}"]`);
+    rowInputs.forEach((inp) => { e.sets[inp.dataset.j][inp.dataset.k] = inp.value; });
     const last = e.sets[e.sets.length - 1] || { w: '', r: '' };
-    e.sets.push({ w: last.w, r: '', done: false });
+    e.sets.push({ w: last.w, r: last.r, done: false });
     save(); rerender();
   },
-  'set-del': (el) => {
-    const w = activeWorkout(); const e = w.ex[el.dataset.i];
-    if (e.sets.length > 1) e.sets.pop();
-    save(); rerender();
-  },
-  'ex-up': (el) => {
-    const w = activeWorkout(); const i = Number(el.dataset.i);
-    if (i > 0) [w.ex[i - 1], w.ex[i]] = [w.ex[i], w.ex[i - 1]];
-    save(); rerender();
-  },
-  'ex-remove': async (el) => {
-    const w = activeWorkout(); const i = Number(el.dataset.i);
-    if (!(await confirmBox(`Remove ${esc(getEx(w.ex[i].ex).name)} from this workout?`))) return;
-    w.ex.splice(i, 1); save(); rerender();
+  'set-del': (el) => deleteSet(Number(el.dataset.i), Number(el.dataset.j)),
+  'ex-menu': async (el) => {
+    const w = activeWorkout(); const i = Number(el.dataset.i); const e = w.ex[i];
+    const ex = getEx(e.ex);
+    const pick = await msgBox({
+      title: ex.name, ico: 'dumbbell', text: '<p>Swipe a set left to delete it.</p>',
+      buttons: [...(ex.type === 'weight' ? [['Plate calculator', 'plates']] : []), ...(i > 0 ? [['Move up', 'up']] : []), ['Remove exercise', 'remove'], ['Cancel', false]],
+    });
+    if (pick === 'plates') actions['plate-calc-ex'](el);
+    else if (pick === 'up') { [w.ex[i - 1], w.ex[i]] = [w.ex[i], w.ex[i - 1]]; save(); rerender(); }
+    else if (pick === 'remove') {
+      if (!(await confirmBox(`Remove ${esc(ex.name)} from this workout?`))) return;
+      w.ex.splice(i, 1); save(); rerender();
+    }
   },
   'plate-calc-ex': (el) => {
     const w = activeWorkout(); const e = w.ex[el.dataset.i];
@@ -202,7 +197,7 @@ on({
     openPlates(s ? num(s.w) : ls ? num(ls.sets[0].w) || 135 : 135);
   },
   'wo-add-ex': () => openExPicker((id) => {
-    const w = activeWorkout(); w.ex.push(makeExEntry(id, 3, '')); save(); closeAllModals(); rerender();
+    const w = activeWorkout(); w.ex.push(makeExEntry(id, 1, '')); save(); closeAllModals(); rerender();
   }),
   'wo-notes': (el) => { const w = activeWorkout(); if (w) { w.notes = el.value; save(); } },
   'wo-discard': async () => {
@@ -240,6 +235,62 @@ on({
     });
   },
 });
+
+function deleteSet(i, j) {
+  const w = activeWorkout(); if (!w || !w.ex[i] || !w.ex[i].sets[j]) return;
+  w.ex[i].sets.splice(j, 1);
+  buzz(HAPTIC.press);
+  save(); rerender();
+}
+
+// ---------- swipe a set row left to delete it ----------
+// A short swipe reveals the red delete button; a long one (past ~45% of the row) deletes right away.
+const OPEN_AT = 84;
+let sw = null;
+function closeSwipes(except) {
+  document.querySelectorAll('.set-swipe.open').forEach((w) => {
+    if (w === except) return;
+    w.classList.remove('open'); const r = w.querySelector('.set'); if (r) r.style.transform = '';
+  });
+}
+document.addEventListener('pointerdown', (e) => {
+  const row = e.target.closest && e.target.closest('.set-swipe > .set');
+  const trash = e.target.closest && e.target.closest('.set-trash');
+  closeSwipes(row ? row.parentElement : trash ? trash.parentElement : null);
+  if (!row || e.button > 0 || row.classList.contains('set-head')) return;
+  sw = { row, wrap: row.parentElement, x0: e.clientX, y0: e.clientY, dx: 0, base: row.parentElement.classList.contains('open') ? -OPEN_AT : 0, on: false, id: e.pointerId };
+});
+document.addEventListener('pointermove', (e) => {
+  if (!sw || e.pointerId !== sw.id) return;
+  const dx = e.clientX - sw.x0; const dy = e.clientY - sw.y0;
+  if (!sw.on) {
+    if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }  // it's a scroll
+    if (Math.abs(dx) < 10 || (dx > 0 && !sw.base)) return;
+    sw.on = true;
+    sw.wrap.classList.add('swiping');
+    if (document.activeElement && sw.row.contains(document.activeElement)) document.activeElement.blur();
+  }
+  sw.dx = Math.min(0, sw.base + dx);
+  sw.row.style.transform = `translateX(${sw.dx}px)`;
+});
+function endSwipe(e) {
+  if (!sw || (e && e.pointerId !== sw.id)) return;
+  const { row, wrap, dx, on } = sw;
+  sw = null;
+  if (!on) return;
+  wrap.classList.remove('swiping');
+  if (document.activeElement && row.contains(document.activeElement)) document.activeElement.blur();
+  if (dx < -row.offsetWidth * 0.45) {
+    row.style.transform = 'translateX(-110%)';
+    setTimeout(() => deleteSet(Number(wrap.dataset.i), Number(wrap.dataset.j)), 160);
+  } else if (dx < -48) {
+    row.style.transform = `translateX(${-OPEN_AT}px)`; wrap.classList.add('open');
+  } else {
+    row.style.transform = ''; wrap.classList.remove('open');
+  }
+}
+document.addEventListener('pointerup', endSwipe);
+document.addEventListener('pointercancel', endSwipe);
 
 // Progressive overload: hit every rep last time -> go up. Missed reps -> repeat the weight.
 const BIG_LOWER = new Set(['back-squat', 'front-squat', 'trap-dl', 'rdl', 'hip-thrust', 'sled-push']);

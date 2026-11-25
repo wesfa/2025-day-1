@@ -9,6 +9,24 @@ const PAL = {
 };
 
 const ART = {
+  trash: [
+    '................',
+    '.....kkkkkk.....',
+    '.....k....k.....',
+    '.kkkkkkkkkkkkkk.',
+    '.kkkkkkkkkkkkkk.',
+    '................',
+    '..kkkkkkkkkkkk..',
+    '..k.kk.kk.kk.k..',
+    '..k.kk.kk.kk.k..',
+    '..k.kk.kk.kk.k..',
+    '..k.kk.kk.kk.k..',
+    '..k.kk.kk.kk.k..',
+    '..k.kk.kk.kk.k..',
+    '..kkkkkkkkkkkk..',
+    '...kkkkkkkkkk...',
+    '................',
+  ],
   leaf: [
     '................',
     '..........qqqq..',
@@ -460,6 +478,24 @@ const ART = {
 // (small arrows, close, etc.) reuses its normal shape in amber - see duskRows().
 const DPAL = {'a': '#ffa53c', 'A': '#ffd98e', 'm': '#b5601e', 'x': '#5a2c10'};
 const DUSK = {
+  trash: [
+    '................',
+    '.....aaaaaa.....',
+    '.....a....a.....',
+    '.aaaaaaaaaaaaaa.',
+    '.aaaaaaaaaaaaaa.',
+    '................',
+    '..aaaaaaaaaaaa..',
+    '..a.aa.aa.aa.a..',
+    '..a.aa.aa.aa.a..',
+    '..a.aa.aa.aa.a..',
+    '..a.aa.aa.aa.a..',
+    '..a.aa.aa.aa.a..',
+    '..a.aa.aa.aa.a..',
+    '..aaaaaaaaaaaa..',
+    '...aaaaaaaaaa...',
+    '................',
+  ],
   calendar: [
     '................',
     '................',
