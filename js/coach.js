@@ -3,7 +3,8 @@
 // grinding yourself down. Between workouts it adds reps, then weight (double progression), faster when you had
 // reps left last time, and a little lighter after a short night's sleep.
 //
-// RPE: 10 = nothing left, 9 = 1 rep left, 8 = 2 left, 7 = 3 left, 6 = 4 or more left.
+// RPE: 10 = nothing left, 9 = 1 rep left, 8 = 2 left, 7 = 3 left, 6 = 4 or more left (counted as 5).
+// A set at RPE 7 or easier means go heavier: the next set goes up a weight whenever the reps still land in the range.
 // Estimated max with RPE = weight x (1 + (reps + reps left) / 30)   (Epley, counting the reps you had left)
 import { S, getEx, lastSetsFor, currentWeight } from './store.js';
 import { EX_META } from './exlib.js';
@@ -51,7 +52,9 @@ function plannedSets(ex, e) {
   return Math.max(2, Math.min(4, t));   // 2-4 hard sets per exercise is plenty for growth
 }
 
-const left = (rpe) => 10 - (num(rpe) || UNRATED);
+// RPE 6 means "4 or more left" - people usually have more in the tank than they think, so call it 5
+const left = (rpe) => { const v = num(rpe) || UNRATED; return v <= 6 ? 5 : 10 - v; };
+const isEasy = (rpe) => num(rpe) > 0 && num(rpe) <= 7;   // 3+ reps left: time to go heavier
 // Estimated max of a set (for bodyweight moves: of bodyweight + added weight)
 export function setMax(set, isBody, bw) {
   const r = num(set.r);
@@ -65,14 +68,17 @@ const loadFor = (max, reps, rir) => max / (1 + (reps + rir) / 30);
 
 function stepFor(ex, w) {
   const meta = EX_META[ex.id];
-  return w < 30 || (meta && meta.db && w < 25) ? 2.5 : 5;
+  if ((meta ? meta.eq : ex.eq) === 'dumbbell') return w < 10 ? 2.5 : 5;   // dumbbell racks go up by 5 lb
+  return w < 30 ? 2.5 : 5;
 }
 const roundTo = (w, st) => Math.round(w / st) * st;
 const floorTo = (w, st) => Math.floor(w / st + 1e-9) * st;
 const clampR = (r, lo, hi) => Math.max(lo, Math.min(hi, r));
 
-// Weight x reps for a set, from an estimated max and the weight you've been using
-function pick(ex, max, ref, lo, hi, rir, isBody, bw) {
+// Weight x reps for a set, from an estimated max and the weight you've been using.
+// easy = the set it's based on had 3+ reps left: go up a weight whenever the reps still land in the range.
+// Returns { w, r, held } - held is the heavier weight it skipped because the reps would drop under the range.
+function pick(ex, max, ref, lo, hi, rir, isBody, bw, easy) {
   if (isBody) {
     const added = num(ref);
     let r = Math.round(repsAt(max, bw + added, rir));
@@ -102,6 +108,10 @@ function pick(ex, max, ref, lo, hi, rir, isBody, bw) {
     let nw = floorTo(loadFor(max, lo + (hi > lo ? 1 : 0), rir), st);
     if (nw >= w) nw = w - st;
     w = Math.max(st, nw); r = Math.round(repsAt(max, w, rir));
+  } else if (easy && w > 0) {
+    const st = stepFor(ex, w);
+    const r2 = Math.round(repsAt(max, w + st, rir));
+    if (r2 >= lo) { w += st; r = r2; } else return { w: String(w), r: clampR(r, lo, hi), held: w + st };
   }
   return { w: String(w), r: clampR(r, lo, hi) };
 }
@@ -124,17 +134,19 @@ export function coach(w, i) {
 
   if (done.length) {
     const s = done[done.length - 1];
-    const max = setMax(s, isBody, bw) * 0.98;   // each hard set leaves you a little more tired
-    const nx = pick(ex, max, s.w, lo, hi, rir, isBody, bw);
+    const easy = isEasy(s.rpe);
+    const max = setMax(s, isBody, bw) * (easy ? 1 : 0.98);   // each hard set leaves you a little more tired
+    const nx = pick(ex, max, s.w, lo, hi, rir, isBody, bw, easy);
     const dw = num(nx.w) - num(s.w);
     const rpe = num(s.rpe);
     const rated = rpe ? `RPE ${rpe}` : 'Last set';
     let why = '';
     if (dw < 0) why = `${rated} was too hard: down ${-dw} lb`;
     else if (dw > 0) why = `${rated} was easy: up ${dw} lb`;
+    else if (nx.held) why = `${rated} was easy: ${nx.r} reps at ${s.w} (${nx.held} would drop you under ${lo} reps)`;
     else if (nx.r < num(s.r)) why = rpe >= 9.5 ? `${rated} was all-out: ${nx.r} reps keeps 2 in the tank` : isBody ? 'A rep or so drops as you tire' : 'Same weight: a rep or so drops as you tire';
     else if (nx.r > num(s.r)) why = rpe && rpe <= 7 ? `${rated} felt easy: go for ${nx.r}` : 'You had more in you: one more rep';
-    out.next = { ...nx, why };
+    out.next = { w: nx.w, r: nx.r, why };
     if (num(s.rpe) >= 10 && num(s.r) < lo) out.advice = 'That was a grind under your rep range - the next set is lighter.';
     else if (done.length >= sets) {
       const easy = num(s.rpe) && num(s.rpe) <= 7 && done.length < sets + 2;
@@ -161,16 +173,16 @@ export function coach(w, i) {
   let gain = hardest ? (hardest <= 8.5 ? 1.02 : hardest < 10 ? 1.01 : 1.0) : 1.01;
   const short = shortNight();
   if (short) gain *= 0.97;
-  const nx = pick(ex, best.m * gain, best.s.w, lo, hi, rir, isBody, bw);
+  const nx = pick(ex, best.m * gain, best.s.w, lo, hi, rir, isBody, bw, isEasy(hardest));
   const dw = num(nx.w) - num(best.s.w);
   const lastTxt = `${fmtSet(best.s, isBody)}${num(best.s.rpe) ? ` @${best.s.rpe}` : ''}`;
   let why;
   if (dw > 0) why = `Last time ${lastTxt}: up ${dw} lb`;
   else if (dw < 0) why = `Last time ${lastTxt}: a bit lighter today`;
-  else if (nx.r > num(best.s.r)) why = `Last time ${lastTxt}: +${nx.r - num(best.s.r)} rep${nx.r - num(best.s.r) > 1 ? 's' : ''}`;
+  else if (nx.r > num(best.s.r)) why = `Last time ${lastTxt}: +${nx.r - num(best.s.r)} rep${nx.r - num(best.s.r) > 1 ? 's' : ''}${nx.held ? ` (${nx.held} is too big a jump yet)` : ''}`;
   else why = `Last time ${lastTxt}: match it`;
   if (short) why += ' · short sleep, 3% easier';
-  out.next = { ...nx, why };
+  out.next = { w: nx.w, r: nx.r, why };
   out.setNo = 1;
   return out;
 }

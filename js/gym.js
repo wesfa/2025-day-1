@@ -107,7 +107,8 @@ export function renderWorkout() {
   const blocks = w.ex.map((e, i) => {
     const ex = getEx(e.ex);
     const rk = ranks[e.ex];
-    const [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
+    let [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
+    if (ex.type === 'weight' && EX_META[e.ex] && EX_META[e.ex].db) l1 = 'lb each';   // weight of ONE dumbbell
     const last = lastSetsFor(e.ex, w.id);
     const co = coach(w, i);
     const sug = co ? null : overload(ex, e, last);
