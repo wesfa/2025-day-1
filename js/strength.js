@@ -186,7 +186,7 @@ export function muscleVolume(days = 7, endKey = dayKey()) {
     for (const e of s.ex) {
       const meta = metaFor(e.ex) || customMeta(e.ex);
       if (!meta || meta.stretch) continue;
-      const k = meta.cardio ? 0.5 : 1;
+      const k = meta.cardio || meta.warm ? 0.5 : 1;
       const n = e.sets.filter((x) => x.done).length;
       if (!n) continue;
       sets += n;

@@ -80,7 +80,8 @@ const CORE_META = {
 };
 
 // The wider library: [id, name, category, type, equipment, primary, secondary, standard, flags, rest seconds]
-// flags: db = per-dumbbell weight, cardio = counts half on the muscle map, stretch = not counted as training volume
+// flags: db = per-dumbbell weight, cardio = counts half on the muscle map, stretch = not counted as training volume,
+//        warm = warm-up / prehab work: counts half on the muscle map and gets no auto weight & reps
 const R = (...a) => a;
 const MORE = [
   // ---- chest / pressing ----
@@ -97,6 +98,10 @@ const MORE = [
   R('diamond-pushup', 'Diamond Push-ups', 'Upper Push', 'body', 'body', 'triceps,chest', 'delts', [3, 12, 24, 38, 52], '', 60),
   R('archer-pushup', 'Archer Push-ups', 'Upper Push', 'body', 'body', 'chest', 'triceps,delts', [1, 4, 9, 15, 22], '', 60),
   R('bench-dips', 'Bench Dips', 'Upper Push', 'body', 'body', 'triceps', 'chest,delts', [5, 15, 28, 42, 60], '', 60),
+  R('fe-bench-dips', 'Feet-Elevated Bench Dips', 'Upper Push', 'body', 'body', 'triceps', 'chest,delts', [3, 11, 21, 33, 46], '', 60),
+  R('std-pushup', 'Push-ups', 'Upper Push', 'body', 'body', 'chest,triceps', 'delts,abs', [5, 18, 32, 48, 66], '', 60),
+  R('deficit-pushup', 'Deficit Push-ups', 'Upper Push', 'body', 'body', 'chest,triceps', 'delts,abs', [4, 15, 28, 42, 58], '', 60),
+  R('sa-db-bench', 'Single-Arm Dumbbell Bench Press', 'Upper Push', 'weight', 'dumbbell', 'chest,triceps', 'delts,obliques,abs', [0.17, 0.3, 0.45, 0.63, 0.82], 'db', 90),
   // ---- shoulders ----
   R('db-press', 'Seated Dumbbell Shoulder Press', 'Shoulders', 'weight', 'dumbbell', 'delts,triceps', 'traps', [0.15, 0.25, 0.38, 0.52, 0.7], 'db', 120),
   R('arnold', 'Arnold Press', 'Shoulders', 'weight', 'dumbbell', 'delts', 'triceps', [0.12, 0.22, 0.34, 0.48, 0.64], 'db', 90),
@@ -115,6 +120,8 @@ const MORE = [
   R('upright-row', 'Barbell Upright Row', 'Shoulders', 'weight', 'barbell', 'delts,traps', 'biceps', [0.25, 0.45, 0.65, 0.9, 1.15], '', 90),
   R('cable-upright', 'Cable Upright Row', 'Shoulders', 'weight', 'cable', 'delts,traps', 'biceps', [0.25, 0.45, 0.65, 0.9, 1.15], '', 75),
   R('ext-rot', 'Cable External Rotation', 'Shoulders', 'weight', 'cable', 'reardelts', '', null, '', 45),
+  R('db-ext-rot', 'Dumbbell External Rotation', 'Shoulders', 'weight', 'dumbbell', 'reardelts', '', null, 'db', 45),
+  R('band-ext-rot', 'Band External Rotation', 'Shoulders', 'body', 'other', 'reardelts', '', null, 'warm', 45),
   // ---- back / pulling ----
   R('deadlift', 'Deadlift', 'Lower', 'weight', 'barbell', 'lowerback,glutes,hams', 'traps,forearms,quads,upperback,lats', [1.0, 1.5, 2.0, 2.5, 3.0], '', 180),
   R('sumo-dl', 'Sumo Deadlift', 'Lower', 'weight', 'barbell', 'glutes,quads,adductors', 'lowerback,hams,traps,forearms', [1.0, 1.45, 1.95, 2.45, 2.95], '', 180),
@@ -240,8 +247,18 @@ const MORE = [
 
 const list = (s) => (s ? s.split(',') : []);
 
+// Coaching cues for library exercises that have them
+const CUES = {
+  'sa-db-bench': ['Free hand grips the bench, hips stay flat', 'Do your weaker side first, then match its reps', 'Weight is per dumbbell; reps are per side'],
+  'deficit-pushup': ['Hands on dumbbells (or plates) so your chest sinks below your hands', 'Tight plank, elbows about 45 degrees', 'Slow down, drive up'],
+  'std-pushup': ['Tight plank, squeeze glutes', 'Chest to an inch off the floor', 'Elbows about 45 degrees'],
+  'fe-bench-dips': ['Hands on a bench, heels on another bench or box', 'Lower until upper arms are level', 'Shoulders down, not shrugged'],
+  'db-ext-rot': ['Lie on your side, elbow pinned at 90 degrees', 'Rotate the weight up slowly, no swinging', 'Light weight - this is shoulder health work'],
+  'band-ext-rot': ['Elbow tucked at your side, bent 90 degrees', 'Rotate your hand out against the band, slow back', 'Great warm-up before pressing'],
+};
+
 export const MORE_EXERCISES = MORE.map(([id, name, cat, type, eq, , , , flags, rest]) => ({
-  id, name, cat, type, rest, eq, cues: [], why: '', ...(flags === 'db' ? { perHand: true } : {}),
+  id, name, cat, type, rest, eq, cues: CUES[id] || [], why: '', ...(flags === 'db' ? { perHand: true } : {}),
 }));
 
 // id -> { m: primary[], s: secondary[], eq, std, db, stretch, cardio }
@@ -250,5 +267,5 @@ for (const [id, [m, s, eq, std, flags]] of Object.entries(CORE_META)) {
   EX_META[id] = { m: list(m), s: list(s), eq, std, db: flags === 'db', stretch: flags === 'stretch', cardio: flags === 'cardio' };
 }
 for (const [id, , , , eq, m, s, std, flags] of MORE) {
-  EX_META[id] = { m: list(m), s: list(s), eq, std, db: flags === 'db', stretch: flags === 'stretch', cardio: flags === 'cardio' };
+  EX_META[id] = { m: list(m), s: list(s), eq, std, db: flags === 'db', stretch: flags === 'stretch', cardio: flags === 'cardio', warm: flags === 'warm' };
 }

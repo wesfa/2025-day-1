@@ -430,10 +430,19 @@ export function openExPicker(onPick) {
   xp.q = ''; xp.cat = ''; xp.onPick = onPick;
   openModal(renderExPicker, { full: true });
 }
+// Search matches every word in any order, so "overhead db triceps extension" finds "Dumbbell Overhead Tricep
+// Extension": DB/BB mean dumbbell/barbell and a plural 's' is ignored.
+const searchText = (name) => {
+  const n = name.toLowerCase();
+  const flat = /bench press/.test(n) && !/incline|decline/.test(n) ? ' flat' : '';
+  return `${n} ${n.replace(/dumbbell/g, 'db').replace(/barbell/g, 'bb')} ${n.replace(/\bdb\b/g, 'dumbbell').replace(/\bbb\b/g, 'barbell')}${flat}`;
+};
+const queryWords = (q) => q.toLowerCase().split(/[\s,]+/).filter(Boolean).map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
 function renderExPicker() {
-  const q = xp.q.toLowerCase();
+  const words = queryWords(xp.q);
   const musclesOf = (e) => (EX_META[e.id] ? EX_META[e.id].m : e.muscle ? [e.muscle] : []);
-  const list = allExercises().filter((e) => (!xp.cat || e.cat === xp.cat) && (!xp.mus || musclesOf(e).includes(xp.mus)) && (!q || e.name.toLowerCase().includes(q)));
+  const matches = (e) => { const t = searchText(e.name); return words.every((w) => t.includes(w)); };
+  const list = allExercises().filter((e) => (!xp.cat || e.cat === xp.cat) && (!xp.mus || musclesOf(e).includes(xp.mus)) && (!words.length || matches(e)));
   const ranks = Object.fromEntries(exerciseRanks().map((x) => [x.exId, x]));
   const sub = (e) => {
     const m = musclesOf(e).map((k) => MUSCLES[k] && MUSCLES[k].name).filter(Boolean).slice(0, 2).join(', ');
