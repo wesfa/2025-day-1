@@ -24,6 +24,7 @@ import { win, group, bar, btn, field, numInput, select, on, openModal, closeModa
 import { icon } from './icons.js';
 import { openAI } from './ai.js';
 import { addFoodToGrocery } from './grocery.js';
+import { allMenuFoods, menuFood } from './fastfood.js';
 
 export const view = { date: dayKey() };
 
@@ -127,26 +128,92 @@ export function openAddFood(meal, date) {
 }
 
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-function searchLocal(q) {
-  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  // each word must match the START of a word ("egg" finds "Scrambled eggs", not "Veggies")
-  const res = words.map((w) => new RegExp('(^|[^a-z0-9])' + reEsc(w)));
-  const pool = [...S.customFoods, ...Object.values(S.foodCache), ...FOODS];
-  const seen = new Set();
-  const out = [];
-  for (const f of pool) {
-    if (seen.has(f.id)) continue;
-    const name = (f.name + ' ' + (f.cat || '')).toLowerCase().replace(/'/g, '');
-    if (res.every((r) => r.test(name))) { out.push(f); seen.add(f.id); }
-    if (out.length >= 80) break;
+const clean = (s) => s.toLowerCase().replace(/[’']/g, '');
+// "bananas" -> "banana", "eggs" -> "egg" (but not "hummus" -> "hummu"... which still matches, as a prefix)
+const stem = (w) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+
+// Edit distance between a typed word and the start of a food word, for typos ("chiken", "bananna", "yougurt")
+function lev(a, b) {
+  const m = a.length; const n = b.length;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
   }
-  // rank: starts-with first, then recents
-  const rec = new Set(S.recent);
-  return out.sort((a, b) => {
-    const as = a.name.toLowerCase().startsWith(words[0] || '') ? 0 : 1;
-    const bs = b.name.toLowerCase().startsWith(words[0] || '') ? 0 : 1;
-    return as - bs || (rec.has(b.id) ? 1 : 0) - (rec.has(a.id) ? 1 : 0);
+  return prev[n];
+}
+// How many typos away a typed word is from the start of the closest food word (Infinity = too far).
+// A match on the food's first word counts a little closer ("bnan" -> "Banana" before "Smoothie (... banana)").
+function wordDist(w, words) {
+  const allow = w.length >= 7 ? 2 : w.length >= 4 ? 1 : 0;
+  let best = Infinity;
+  words.forEach((x, k) => {
+    const later = k > 0 ? 0.25 : 0;
+    if (x.startsWith(w)) { best = Math.min(best, later); return; }
+    if (!allow) return;
+    for (let L = w.length - 1; L <= w.length + 1; L++) {
+      if (L <= 0) continue;
+      const d = lev(w, x.slice(0, L));
+      if (d <= allow) best = Math.min(best, d + later);
+    }
   });
+  return best;
+}
+// The typed letters appear in order, close together, from the start of a word ("bnan" -> "banana").
+// Returns where that word starts, or -1.
+function inOrder(q, name) {
+  for (let st = 0; st < name.length; st++) {
+    if (name[st] !== q[0] || (st > 0 && /[a-z0-9]/.test(name[st - 1]))) continue;
+    let i = 0; let j = st;
+    for (; j < name.length && i < q.length; j++) if (name[j] === q[i]) i++;
+    if (i === q.length && j - st <= q.length * 2 + 1) return st;
+  }
+  return -1;
+}
+
+// Returns { list, close } - close = no exact match, these are spelled-close matches
+function searchLocal(q) {
+  const words = clean(q).split(/[\s,]+/).filter(Boolean).map(stem);
+  if (!words.length) return { list: [], close: false };
+  const res = words.map((w) => new RegExp('(^|[^a-z0-9])' + reEsc(w)));
+  const pool = [...S.customFoods, ...Object.values(S.foodCache), ...FOODS, ...allMenuFoods()];
+  const seen = new Set();
+  const foods = [];
+  for (const f of pool) {
+    if (!f || seen.has(f.id)) continue;
+    seen.add(f.id);
+    const key = clean(f.name + '|' + f.serving);
+    if (seen.has(key)) continue;   // same food from two sources (built-in + fast food menu)
+    seen.add(key);
+    foods.push({ f, text: clean(f.name + ' ' + (f.cat || '')), name: clean(f.name), i: foods.length, d: 0 });
+  }
+  let hits = foods.filter((x) => res.every((r) => r.test(x.text)));
+  let close = false;
+  if (!hits.length) {
+    close = true;
+    const compact = words.join('');
+    hits = foods.filter((x) => {
+      const nameWords = x.name.split(/[^a-z0-9]+/).filter(Boolean);
+      x.d = words.reduce((a, w) => a + wordDist(w, nameWords), 0);
+      // letters typed in the right order (a missed key, like "bnan") beat a wrong letter ("bean")
+      const at = compact.length >= 3 ? inOrder(compact, x.name) : -1;
+      if (at >= 0) x.d = x.d === Infinity ? 1.5 + (at ? 0.25 : 0) : x.d - 0.5;
+      return x.d < Infinity;
+    });
+  }
+  // rank: fewest typos, then name starts with what you typed, then favorites and recents, then the list's own
+  // order (most common foods first), then shorter (plainer) names
+  const full = words.join(' ');
+  const rec = new Set(S.recent);
+  const fav = new Set(S.favs);
+  const n0 = foods.length || 1;
+  const score = (x) => {
+    const tier = x.name.startsWith(full) ? 0 : x.name.startsWith(words[0]) ? 1 : 2;
+    return x.d * 100 + tier * 20 - (fav.has(x.f.id) ? 8 : 0) - (rec.has(x.f.id) ? 6 : 0) + (x.i / n0) * 5 + Math.min(x.name.length, 60) / 1000;
+  };
+  hits.sort((a, b) => score(a) - score(b));
+  return { list: hits.slice(0, 60).map((x) => x.f), close };
 }
 
 function foodRow(f) {
@@ -157,12 +224,13 @@ function foodRow(f) {
     <span class="row-num">${fmt(f.cal)}</span></button>`;
 }
 
-function renderAddFood() {
-  const tabs = [['recent', 'Recent'], ['favs', 'Favorites'], ['meals', 'Meals'], ['mine', 'My Foods'], ['all', 'All']];
+const AF_TABS = [['recent', 'Recent'], ['favs', 'Favorites'], ['meals', 'Meals'], ['mine', 'My Foods'], ['all', 'All']];
+const afTabs = () => (af.q.trim() ? '' : `<div class="tabs" role="tablist">${AF_TABS.map(([k, l]) => `<button class="tab ${af.tab === k ? 'on' : ''}" data-act="af-tab" data-tab="${k}">${l}</button>`).join('')}</div>`);
+function afList() {
   let list = '';
   if (af.q.trim()) {
-    const res = searchLocal(af.q.trim());
-    list = (res.length ? res.map(foodRow).join('') : '<p class="empty">No matches in your foods.</p>') + renderOnline();
+    const { list: res, close } = searchLocal(af.q.trim());
+    list = (res.length ? (close ? `<div class="sub-head">Close matches</div>` : '') + res.map(foodRow).join('') : '<p class="empty">No matches in your foods.</p>') + renderOnline();
   } else if (af.tab === 'recent') {
     const r = recentFoods();
     list = r.length ? r.map(foodRow).join('') : '<p class="empty">Foods you log show up here so re-logging is one tap.</p>';
@@ -182,7 +250,10 @@ function renderAddFood() {
     const cat = af.cat || 'Protein';
     list = `<div class="field-inline">${select('cat', cats, cat, { data: 'data-change="af-cat"' })}</div>` + FOODS.filter((f) => f.cat === cat).map(foodRow).join('');
   }
+  return list;
+}
 
+function renderAddFood() {
   return win(`Add Food - ${esc(af.meal)}`, `
     <div class="search-row">
       <input id="af-q" class="inp grow" type="search" placeholder="Search foods..." value="${esc(af.q)}" data-input="af-q" autocomplete="off" enterkeyhint="search">
@@ -193,8 +264,8 @@ function renderAddFood() {
       ${btn('Quick add', 'quick-add-af')}
       ${btn('Create food', 'create-food')}
     </div>
-    ${af.q.trim() ? '' : `<div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button class="tab ${af.tab === k ? 'on' : ''}" data-act="af-tab" data-tab="${k}">${l}</button>`).join('')}</div>`}
-    <div class="tab-body list" id="af-list">${list}</div>
+    <div id="af-tabs">${afTabs()}</div>
+    <div class="tab-body list" id="af-list">${afList()}</div>
     <div class="select-meal">Adding to: ${select('meal', MEALS.map((m) => [m, m]), af.meal, { data: 'data-change="af-meal"' })} <span class="muted">${esc(prettyDay(af.date))}</span></div>
   `, { ico: 'burger', cls: 'full-win', close: 'modal-close' });
 }
@@ -209,23 +280,27 @@ function renderOnline() {
   return `<div class="online-box"><div class="sub-head">Online results</div>${o.results.length ? o.results.map(foodRow).join('') : '<p class="empty">Nothing found online. Try fewer words, or Create food.</p>'}</div>`;
 }
 
+// Typing only refreshes the results below the search box. The box itself is never redrawn, so fast typing
+// can't lose letters (redrawing it mid-word on a phone dropped keystrokes: "banana" became "bnan").
 let qTimer;
+function refreshAfList() {
+  const list = document.getElementById('af-list');
+  const tabs = document.getElementById('af-tabs');
+  if (!list || !tabs) { drawModals(); return; }
+  tabs.innerHTML = afTabs();
+  list.innerHTML = afList();
+}
 on({
   'af-q': (el) => {
     af.q = el.value;
     clearTimeout(qTimer);
-    qTimer = setTimeout(() => {
-      const pos = el.selectionStart;
-      drawModals();
-      const inp = document.getElementById('af-q');
-      if (inp) { inp.focus(); try { inp.setSelectionRange(pos, pos); } catch (e) { /* ignore */ } }
-    }, 120);
+    qTimer = setTimeout(refreshAfList, 60);
   },
-  'af-tab': (el) => { af.tab = el.dataset.tab; drawModals(); },
-  'af-cat': (el) => { af.cat = el.value; drawModals(); },
+  'af-tab': (el) => { af.tab = el.dataset.tab; refreshAfList(); },
+  'af-cat': (el) => { af.cat = el.value; refreshAfList(); },
   'af-meal': (el) => { af.meal = el.value; drawModals(); },
   'pick-food': (el) => {
-    const f = getFood(el.dataset.fid) || onlineMap[el.dataset.fid];
+    const f = getFood(el.dataset.fid) || onlineMap[el.dataset.fid] || menuFood(el.dataset.fid);
     if (f) openFoodDetail(f, { date: af.date, meal: af.meal });
   },
   'quick-add-af': () => openQuickAdd(af.meal, af.date),
@@ -457,8 +532,8 @@ async function fetchJSON(url, ms = 15000) {
 async function searchOnline(q) {
   if (!q) return;
   af.online = { q, loading: true, results: [] };
-  drawModals();
-  if (!navigator.onLine) { af.online = { q, error: 'You\'re offline. Try again with signal, or use Quick add.' }; drawModals(); return; }
+  refreshAfList();
+  if (!navigator.onLine) { af.online = { q, error: 'You\'re offline. Try again with signal, or use Quick add.' }; refreshAfList(); return; }
   try {
     const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=30&sort_by=unique_scans_n&fields=${OFF_FIELDS}`;
     const data = await fetchJSON(url);
@@ -468,7 +543,7 @@ async function searchOnline(q) {
   } catch (e) {
     af.online = { q, error: 'Online search is busy or unreachable right now. Try again in a minute, or use Quick add.' };
   }
-  drawModals();
+  refreshAfList();
 }
 
 export async function lookupBarcode(code) {

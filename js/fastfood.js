@@ -133,6 +133,14 @@ const MENUS = {
 export const CHAINS = Object.keys(MENUS);
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+// Every chain's menu as foods, so food search finds them too ("spicy chicken sandwich", "cane's")
+let allMenu = null;
+export function allMenuFoods() {
+  if (!allMenu) allMenu = CHAINS.flatMap(menuOf);
+  return allMenu;
+}
+export const menuFood = (id) => allMenuFoods().find((f) => f.id === id) || null;
+
 export function menuOf(chain) {
   return (MENUS[chain] || []).map(([name, serving, cal, p, c, f, fib, na, pot, kind, b]) => ({
     id: `ff:${slug(chain)}-${slug(name)}-${slug(serving)}`, name: `${chain} ${name}`, short: name, serving,

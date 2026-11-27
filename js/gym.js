@@ -439,7 +439,7 @@ const searchText = (name) => {
   return `${n} ${n.replace(/dumbbell/g, 'db').replace(/barbell/g, 'bb')} ${n.replace(/\bdb\b/g, 'dumbbell').replace(/\bbb\b/g, 'barbell')}${flat}`;
 };
 const queryWords = (q) => q.toLowerCase().split(/[\s,]+/).filter(Boolean).map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
-function renderExPicker() {
+function xpList() {
   const words = queryWords(xp.q);
   const musclesOf = (e) => (EX_META[e.id] ? EX_META[e.id].m : e.muscle ? [e.muscle] : []);
   const matches = (e) => { const t = searchText(e.name); return words.every((w) => t.includes(w)); };
@@ -461,24 +461,33 @@ function renderExPicker() {
         <span class="row-btns">${xp.onPick ? btn('Add', 'xp-pick', { data: `data-id="${e.id}"`, cls: 'primary' }) : ''}${btn('?', 'ex-info', { data: `data-id="${e.id}"`, cls: 'sq' })}</span>
       </div>`).join('');
   }).join('');
+  return byCat || '<p class="empty">No exercises match.</p>';
+}
+function renderExPicker() {
+  const cats = [...EX_CATS, 'Custom'];
   return win(xp.onPick ? 'Add Exercise' : 'Exercise Library', `
     <div class="search-row"><input id="xp-q" class="inp grow" type="search" placeholder="Search exercises..." value="${esc(xp.q)}" data-input="xp-q" autocomplete="off"></div>
     <div class="grid2">
       ${select('cat', [['', 'All categories'], ...cats.map((c) => [c, c])], xp.cat, { data: 'data-change="xp-cat"' })}
       ${select('mus', [['', 'All muscles'], ...Object.entries(MUSCLES).map(([k, m]) => [k, m.name])], xp.mus || '', { data: 'data-change="xp-mus"' })}
     </div>
-    <div class="list">${byCat || '<p class="empty">No exercises match.</p>'}</div>
+    <div class="list" id="xp-list">${xpList()}</div>
     <div class="btn-row">${btn('+ Create exercise', 'xp-create')}</div>
   `, { cls: 'full-win', close: 'modal-close', ico: 'book' });
 }
+// Typing only refreshes the list - the search box is never redrawn, so fast typing can't drop letters
 let xpTimer;
+function refreshXp() {
+  const l = document.getElementById('xp-list');
+  if (l) l.innerHTML = xpList(); else drawModals();
+}
 on({
   'xp-q': (el) => {
     xp.q = el.value; clearTimeout(xpTimer);
-    xpTimer = setTimeout(() => { drawModals(); const i = document.getElementById('xp-q'); if (i) { i.focus(); const n = i.value.length; try { i.setSelectionRange(n, n); } catch (e) { /* */ } } }, 120);
+    xpTimer = setTimeout(refreshXp, 60);
   },
-  'xp-cat': (el) => { xp.cat = el.value; drawModals(); },
-  'xp-mus': (el) => { xp.mus = el.value; drawModals(); },
+  'xp-cat': (el) => { xp.cat = el.value; refreshXp(); },
+  'xp-mus': (el) => { xp.mus = el.value; refreshXp(); },
   'xp-pick': (el) => xp.onPick && xp.onPick(el.dataset.id),
   'xp-create': () => openModal(() => win('Create Exercise', `
     <form id="xc" onsubmit="return false">
