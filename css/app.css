@@ -1258,3 +1258,48 @@ html .c-fib { color: var(--mfib); } html .c-na { color: var(--mna); } html .c-po
 .mu-bar { height: 8px; background: var(--field); }
 .mu-bar i { display: block; height: 100%; }
 .mu-row .vt { text-align: right; font-size: 18px; }
+
+/* ---------- Glance: open to the city (just today's calories; tap anywhere to go in) ---------- */
+body.glance #taskbar, body.glance #restbar, body.glance #startmenu { display: none; }
+body.glance { padding-bottom: 0; overflow: hidden; }
+.glance-view {
+  position: fixed; inset: 0; z-index: 5; display: block; width: 100%; margin: 0; padding: 0; border: 0; background: none;
+  font: inherit; color: #fff6e6; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  animation: glIn 0.8s ease both;
+}
+.gl-box {
+  position: absolute; left: 22px; right: 22px; top: calc(env(safe-area-inset-top) + 7vh);
+  display: flex; flex-direction: column; gap: 4px; isolation: isolate;
+  text-shadow: 0 1px 0 #000, 0 0 12px rgba(0, 0, 0, 0.85);
+}
+/* a soft shadow so the numbers read over a bright sky, without a panel hiding the city */
+.gl-box::before {
+  content: ''; position: absolute; left: -60px; top: -40px; width: 460px; height: calc(100% + 90px); z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at 38% 50%, rgba(8, 5, 4, 0.62), rgba(8, 5, 4, 0.35) 45%, rgba(8, 5, 4, 0) 72%);
+}
+.gl-hello { font-size: 26px; }
+.gl-date { font-size: 14px; color: #ffc27a; letter-spacing: 0.5px; }
+.gl-cal { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; }
+.gl-cal .vt { font-size: 68px; line-height: 0.9; color: #fff6e6; }
+.gl-of { font-size: 18px; opacity: 0.85; }
+.gl-bar { display: block; width: min(260px, 72%); height: 6px; margin-top: 4px; background: rgba(0, 0, 0, 0.45); outline: 1px solid rgba(255, 165, 60, 0.4); }
+.gl-bar i { display: block; height: 100%; background: #ffa53c; box-shadow: 0 0 8px rgba(255, 140, 40, 0.6); }
+.gl-left { font-size: 15px; color: #f0d6b0; margin-top: 2px; }
+.gl-macs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: min(330px, 100%); margin-top: 14px; }
+.gl-mac { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gl-ml { font-size: 13px; letter-spacing: 0.5px; }
+.gl-ml.c-p { color: #5cc8ff; } .gl-ml.c-c { color: #7ddc5a; } .gl-ml.c-f { color: #ff8ab8; }
+.gl-mv { font-size: 14px; color: #f0d6b0; white-space: nowrap; }
+.gl-mv b { font-family: 'VT323', monospace; font-size: 26px; font-weight: 400; color: #fff6e6; line-height: 1; }
+.gl-mbar { display: block; height: 4px; background: rgba(0, 0, 0, 0.45); outline: 1px solid rgba(255, 255, 255, 0.15); }
+.gl-mbar i { display: block; height: 100%; }
+.gl-mbar i.m-p { background: #5cc8ff; } .gl-mbar i.m-c { background: #7ddc5a; } .gl-mbar i.m-f { background: #ff8ab8; }
+.gl-tap {
+  position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 24px); text-align: center;
+  font-size: 13px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.6;
+  text-shadow: 0 1px 0 #000, 0 0 8px rgba(0, 0, 0, 0.85); animation: glPulse 2.6s ease-in-out 1.5s infinite;
+}
+@keyframes glIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes glPulse { 50% { opacity: 0.25; } }
+body.from-glance #app { animation: glIn 0.35s ease both; }
+@media (prefers-reduced-motion: reduce) { .glance-view, .gl-tap, body.from-glance #app { animation: none; } }

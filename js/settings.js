@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.17.0';
+export const APP_VERSION = '1.18.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',
@@ -151,6 +151,7 @@ export function renderSettings() {
 
     ${show('look', group('Appearance', `
       ${field('Color scheme', select('theme', Object.entries(THEMES), S.settings.theme, { data: 'data-change="theme"' }))}
+      <label class="check"><input type="checkbox" data-change="set-glance" ${S.settings.glance !== false ? 'checked' : ''}><span>Open to the city view (just today's calories - tap to go in)</span></label>
       <label class="check"><input type="checkbox" data-change="set-haptics" ${S.settings.haptics !== false ? 'checked' : ''}><span>Little vibrations on important taps</span></label>
       <p class="muted small" style="margin-top:-4px">On iPhone this needs iOS 18 or newer.</p>
       <label class="check"><input type="checkbox" data-change="set-sound" ${S.settings.sound ? 'checked' : ''}><span>Beep when rest timer ends</span></label>
@@ -208,6 +209,7 @@ on({
     rerender(); window.scrollTo(0, 0);
   },
   'set-sound': (el) => { S.settings.sound = el.checked; save(); },
+  'set-glance': (el) => { S.settings.glance = el.checked; save(); },
   'set-haptics': (el) => { S.settings.haptics = el.checked; save(); setHaptics(el.checked); if (el.checked) buzz(HAPTIC.success); },
   'set-daytargets': (el) => { S.settings.dayTargets = el.checked; save(); rerender(); },
   'set-liftdays': () => {

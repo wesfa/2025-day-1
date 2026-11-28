@@ -1,9 +1,9 @@
 // App shell: router, taskbar, Start menu, service worker, timers.
-import { S, save, activeWorkout, rawAtLoad, replaceState, enableMirror } from './store.js';
+import { S, save, activeWorkout, rawAtLoad, replaceState, enableMirror, totals, targets } from './store.js';
 import { readMirror, snapshot } from './vault.js';
 import { actions, on, setRerender, setNavigate, go, drawModals, closeAllModals, modalOpen, msgBox, toast, unlockAudio } from './ui.js';
 import { icon } from './icons.js';
-import { dayKey, clockNow, esc, isStandalone, buzz, HAPTIC, hapticsUsed, setHaptics } from './util.js';
+import { dayKey, clockNow, esc, fmt, longDate, isStandalone, buzz, HAPTIC, hapticsUsed, setHaptics } from './util.js';
 import { renderToday } from './today.js';
 import { renderFood, view as foodView } from './food.js';
 import { renderGym, renderWorkout, tickWorkoutClock } from './gym.js';
@@ -53,6 +53,47 @@ function route() {
   return SCREENS[r] ? r : 'today';
 }
 
+// ---------- Glance: open to the city ----------
+// Opening the app (or coming back after 30+ minutes away) shows just the sky and today's calories.
+// One tap anywhere goes into the normal Today screen. Off switch: Control Panel > Look & sky.
+const GLANCE_AWAY = 30 * 60 * 1000;
+let hiddenAt = 0;
+const wantGlance = () => S.setupDone && S.settings.glance !== false && route() === 'today' && !activeWorkout() && !modalOpen();
+let glance = wantGlance();
+
+function renderGlance() {
+  const k = dayKey();
+  const t = totals(k);
+  const tg = targets(k);
+  const left = tg.cal - t.cal;
+  const pct = Math.max(0, Math.min(100, (t.cal / (tg.cal || 1)) * 100));
+  const h = new Date().getHours();
+  const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const name = S.profile.name ? `, ${esc(S.profile.name)}` : '';
+  return `<button class="glance-view" data-act="glance-open" aria-label="Today: ${fmt(t.cal)} of ${fmt(tg.cal)} calories, ${fmt(t.p)} of ${tg.p} grams protein, ${fmt(t.c)} of ${tg.c} carbs, ${fmt(t.f)} of ${tg.f} fat. Tap to open.">
+    <span class="gl-box">
+      <span class="gl-hello">${hello}${name}</span>
+      <span class="gl-date">${esc(longDate(new Date()))}</span>
+      <span class="gl-cal"><b class="vt">${fmt(t.cal)}</b><span class="gl-of">/ ${fmt(tg.cal)} kcal</span></span>
+      <span class="gl-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
+      <span class="gl-left">${left >= 0 ? `${fmt(left)} left today` : `${fmt(-left)} over today`}</span>
+      <span class="gl-macs">${[['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([m, l]) => `
+        <span class="gl-mac"><span class="gl-ml c-${m}">${l}</span><span class="gl-mv"><b>${fmt(t[m])}</b>/${fmt(tg[m])}g</span>
+          <span class="gl-mbar"><i class="m-${m}" style="width:${Math.max(0, Math.min(100, (t[m] / (tg[m] || 1)) * 100)).toFixed(1)}%"></i></span></span>`).join('')}
+      </span>
+    </span>
+    <span class="gl-tap">tap anywhere</span>
+  </button>`;
+}
+on({
+  'glance-open': () => {
+    glance = false;
+    document.body.classList.add('from-glance');
+    setTimeout(() => document.body.classList.remove('from-glance'), 500);
+    render();
+  },
+});
+
 function render() {
   if (!S.setupDone) {
     document.body.classList.add('in-wizard');
@@ -61,6 +102,16 @@ function render() {
     return;
   }
   document.body.classList.remove('in-wizard');
+  if (glance && route() !== 'today') glance = false;   // navigating anywhere else leaves the glance
+  document.body.classList.toggle('glance', glance);
+  if (glance) {
+    $app.innerHTML = renderGlance();
+    renderTaskbar(route());
+    window.scrollTo(0, 0);
+    lastRoute = '';
+    document.title = 'Macros';
+    return;
+  }
   const r = route();
   const sameRoute = r === lastRoute;
   const y = window.scrollY;
@@ -231,6 +282,7 @@ setInterval(() => {
 // ---------- Visibility: badge + reminder sync ----------
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    hiddenAt = Date.now();
     save(true);
     if (navigator.setAppBadge && S.setupDone) {
       const need = S.weights[dayKey()] == null ? 1 : 0;
@@ -238,6 +290,7 @@ document.addEventListener('visibilitychange', () => {
     }
   } else {
     if (dayKey() !== lastDay) { lastDay = dayKey(); foodView.date = lastDay; }
+    if (hiddenAt && Date.now() - hiddenAt > GLANCE_AWAY && wantGlance()) { glance = true; toggleStart(false); }
     if (!modalOpen()) render();
     syncPush().catch(() => {});
   }
