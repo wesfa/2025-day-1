@@ -81,6 +81,7 @@ const clampR = (r, lo, hi) => Math.max(lo, Math.min(hi, r));
 function pick(ex, max, ref, lo, hi, rir, isBody, bw, easy) {
   if (isBody) {
     const added = num(ref);
+    if (ex.cat === 'Power') return { w: added ? String(added) : '', r: hi };   // jumps: crisp reps, never add weight
     let r = Math.round(repsAt(max, bw + added, rir));
     if (r > hi + 2 && goalMode() === 'muscle' && !repsOnly(ex)) {
       // too easy at bodyweight: add weight to land mid-range
