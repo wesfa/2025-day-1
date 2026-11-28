@@ -87,7 +87,7 @@ function reviewRows(rv) {
   const rows = [
     ['Protein', `${r0(a.p)} / ${r0(g.p)} g a day`, lvl(pct(a.p, g.p) >= 0.9, pct(a.p, g.p) >= 0.75)],
     ['Calories', `${fmt(a.cal)} / ${fmt(g.cal)} a day${calNote}`, calLvl],
-    ['Sodium', `${fmt(a.na)} mg a day (max ${fmt(g.na)})`, lvl(a.na <= g.na, a.na <= g.na * 1.25)],
+    ['Sodium', `${fmt(a.na)} mg a day (avg max ${fmt(g.na)})`, lvl(a.na <= g.na, a.na <= g.na * 1.25)],
     ['Fiber', `${r0(a.fib)} / ${r0(g.fib)} g a day`, lvl(pct(a.fib, g.fib) >= 0.8, pct(a.fib, g.fib) >= 0.6)],
     ['Potassium', `${fmt(a.pot)} / ${fmt(g.pot)} mg a day`, lvl(pct(a.pot, g.pot) >= 0.8, pct(a.pot, g.pot) >= 0.6)],
     ['Fruit & veg', `${r1(rv.produce)} servings a day (aim for 4+)`, lvl(rv.produce >= 4, rv.produce >= 2)],

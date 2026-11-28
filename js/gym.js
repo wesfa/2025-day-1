@@ -155,13 +155,14 @@ export function renderWorkout() {
       </div>${asking ? rpePicker(i, j, s.rpe) : ''}`;
     }).join('');
     const coachLine = co ? `<div class="coach-tip coach ${co.next && !co.enough && !rating ? 'up' : ''}">
-        <div class="co-top"><b>Aim ${co.sets} x ${rangeText(co)}</b> <span class="muted">@ RPE ${co.rpe} (${co.rpe === 7 ? '3' : '2'} in the tank)</span>${co.setNo && !rating ? `<span class="co-set muted">set ${co.setNo}/${co.sets}</span>` : ''}</div>
+        <div class="co-top"><b>Aim ${co.sets} x ${rangeText(co)}</b> <span class="muted">@ RPE ${co.rpe} (${co.rpe === 7 ? '3' : '2'} in the tank)</span></div>
         ${rating ? `<div>Rate set ${lastDone + 1} below to get your next target.</div>`
           : `${co.next && !co.enough ? `<div>Do: <b class="vt">${esc(fmtSet(co.next, ex.type === 'body'))}</b></div>${co.next.why ? `<div class="co-why muted">${esc(co.next.why)}</div>` : ''}` : ''}
         ${co.advice ? `<div class="muted">${esc(co.advice)}</div>` : ''}`}
       </div>` : '';
     return `<section class="group ex-block">
       <div class="ex-head"><button class="ex-name" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button>
+        ${co && (co.setNo || rating) ? `<span class="ex-setno">set ${rating ? lastDone + 1 : co.setNo}/${co.sets}</span>` : ''}
         <button class="ex-more" data-act="ex-menu" data-i="${i}" aria-label="More for ${esc(ex.name)}">&middot;&middot;&middot;</button></div>
       ${(e.target && !co) || !(last || co) ? `<div class="ex-meta">${e.target && !co ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last || co ? '' : '<span class="muted small">First time - start light, own the form</span>'}</div>` : ''}
       ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">· rank up at ${nwPairs(rk.next.label)}</span>` : ''}</button>` : ''}

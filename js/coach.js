@@ -181,7 +181,7 @@ export function coach(w, i) {
   const lastTxt = `${fmtSet(best.s, isBody)}${num(best.s.rpe) ? ` @${best.s.rpe}` : ''}`;
   let why;
   if (dw > 0) why = `Last time ${lastTxt}: up ${dw} lb`;
-  else if (dw < 0) why = nx.r > num(best.s.r) ? `Last time ${lastTxt}: lighter, more reps (${lo}-${hi} range)` : `Last time ${lastTxt}: a bit lighter today`;
+  else if (dw < 0) why = nx.r > num(best.s.r) ? `Last time ${lastTxt}: lighter, ${lo}-${hi} reps` : `Last time ${lastTxt}: a bit lighter today`;
   else if (nx.r > num(best.s.r)) why = `Last time ${lastTxt}: +${nx.r - num(best.s.r)} rep${nx.r - num(best.s.r) > 1 ? 's' : ''}${nx.held ? ` (${nx.held} is too big a jump yet)` : ''}`;
   else why = `Last time ${lastTxt} - same again`;
   if (short) why += ' · short sleep, 3% easier';

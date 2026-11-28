@@ -5,7 +5,7 @@ import { dayKey, esc, r0, r1, fmt, longDate, buzz, isStandalone, fmtTime } from 
 import { win, group, bar, btn, on, rerender, toast } from './ui.js';
 import { icon } from './icons.js';
 import { openAddFood, openFoodDetail, mealForNow, microStrip } from './food.js';
-import { logWeight, weightStats } from './weight.js';
+import { logWeight, weightStats, goalSuggestion, goalSuggestionBox } from './weight.js';
 import { dueNow, dateRule, DATE_KINDS } from './reminders.js';
 import './ai.js';
 import { sleepCard } from './sleep.js';
@@ -81,7 +81,7 @@ export function renderToday() {
   if (act) train = `<p><b>${esc(act.name)}</b> is in progress.</p>${btn('Resume workout', 'go-workout', { cls: 'primary wide', ico: 'dumbbell' })}`;
   else if (doneToday.length) train = `<p class="ok-line">${icon('check', 16)} Done: ${esc(doneToday.map((w) => w.name).join(', '))}</p><p class="muted small">Recovery = protein + carbs + sleep. Get 8+ hours.</p>`;
   else if (next) train = `<p class="next-name">${esc(next.name)}</p><p class="muted small">${next.items.slice(0, 4).map((i) => esc(getEx(i.ex).name)).join(' · ')}${next.items.length > 4 ? ' ...' : ''}</p>
-      <div class="btn-row">${btn('Start', 'start-tpl', { cls: 'primary grow', data: `data-id="${next.id}"`, ico: 'dumbbell' })}</div>
+      <div class="btn-row">${btn('Start', 'start-tpl', { cls: 'primary grow', data: `data-id="${next.id}"`, ico: 'dumbbell' })}${tg.dayType ? btn(tg.dayType === 'train' ? 'Rest day' : 'Train today', 'day-set', { data: `data-type="${tg.dayType === 'train' ? 'rest' : 'train'}"` }) : ''}</div>
       ${tg.dayType === 'rest' ? '<p class="muted small">Rest day - recover, stretch, and still hit your protein.</p>' : ''}`;
   else train = btn('Open gym', 'nav', { data: 'data-to="#/gym"' });
 
@@ -113,8 +113,8 @@ export function renderToday() {
     ${tg.dayType ? `<div class="day-type">
       <span class="tag dt-${tg.dayType}">${tg.dayType === 'train' ? 'Training day' : 'Rest day'}</span>
       <span class="muted small">${tg.dayDelta > 0 ? '+' : ''}${fmt(tg.dayDelta)} kcal vs avg day</span>
-      ${doneToday.length || act ? '' : btn(tg.dayType === 'train' ? 'Rest today' : 'Training today', 'day-set', { cls: 'chip', data: `data-type="${tg.dayType === 'train' ? 'rest' : 'train'}"` })}
     </div>` : ''}
+    ${goalSuggestionBox(goalSuggestion(), true)}
     <div class="cal-box panel sunken">
       <div class="cal-nums">
         <div><span>Eaten</span><b class="vt">${fmt(t.cal)}</b></div>

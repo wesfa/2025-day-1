@@ -3,7 +3,7 @@ import { S, totals, targets, peekDay, doneWorkouts, weightEntries } from './stor
 import { dayKey, addDays, parseDay, DOW1, r0, r1, fmt, esc } from './util.js';
 import { win, group, btn, on, openModal } from './ui.js';
 import { icon } from './icons.js';
-import { paceStatus } from './weight.js';
+import { paceStatus, goalSuggestion, goalSuggestionBox } from './weight.js';
 
 export function weekStats(endKey = dayKey()) {
   const tg = targets();
@@ -46,7 +46,8 @@ function verdict(w) {
   // the scale has the final say: under your calorie goal is fine if you're still gaining on pace
   const pc = paceStatus();
   const pace = pc ? `${pc.rate > 0 ? '+' : ''}${r1(pc.rate)} lb/week (plan ${pc.plan > 0 ? '+' : ''}${r1(pc.plan)})` : '';
-  if (dir > 0 && pc && pc.status === 'fast') tips.push(`You're gaining ${pace}, faster than planned. Don't add food - trim ~250 kcal a day, sweets and drinks first.`);
+  const sg = goalSuggestion();
+  if (dir > 0 && pc && pc.status === 'fast') tips.push(sg ? `You're gaining ${pace}, faster than planned. Don't add food.` : `You're gaining ${pace}, faster than planned. Don't add food - ease off sweets and drinks.`);
   else if (dir > 0 && w.avgCal < w.tg.cal * 0.9 && w.loggedDays) {
     if (pc && pc.status === 'ok') tips.push(`You're under your calorie goal (${fmt(w.avgCal)} vs ${fmt(w.tg.cal)}), but the scale is right on pace at ${pace}. No change needed.`);
     else tips.push(`You're averaging ${fmt(w.avgCal)} kcal vs your average goal (${fmt(w.tg.cal)}) and the scale is slow. Add a 4th meal: PB&J + whole milk is ~540 kcal.`);
@@ -62,6 +63,8 @@ export function openWeekly() {
   const w = weekStats(addDays(dayKey(), -1));   // the last 7 full days - today isn't over yet
   const max = Math.max(w.tg.cal * 1.2, ...w.days.map((d) => d.cal));
   const change = w.wNow != null && w.wPrev != null ? w.wNow - w.wPrev : null;
+  const pc = paceStatus();
+  const trend = pc ? pc.rate : change;   // the same trend number the Weight page and the coach tips use
   const bars = w.days.map((d) => {
     const h = Math.round((d.cal / max) * 100);
     const pOk = d.p >= targets(d.k).p * 0.9;
@@ -80,9 +83,9 @@ export function openWeekly() {
       <div class="stat sunken"><span>Protein days</span><b class="vt">${w.proteinHits}/7</b></div>
       <div class="stat sunken"><span>Lifts</span><b class="vt">${w.lifts}</b></div>
       <div class="stat sunken"><span>Days logged</span><b class="vt">${w.loggedDays}/7</b></div>
-      <div class="stat sunken"><span>Weight vs last wk</span><b class="vt">${change == null ? '-' : `${change > 0 ? '+' : ''}${r1(change)}<small> lb</small>`}</b></div>
+      <div class="stat sunken"><span>Weight trend</span><b class="vt">${trend == null ? '-' : `${trend > 0 ? '+' : ''}${r1(trend)}<small> lb/wk</small>`}</b></div>
     </div>
-    ${group('Coach', `<ul class="coach">${verdict(w).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`)}
+    ${group('Coach', `<ul class="coach">${verdict(w).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>${goalSuggestionBox(goalSuggestion())}`)}
     <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>
   `, { cls: 'dialog', close: 'modal-close', ico: 'trophy' }));
 }

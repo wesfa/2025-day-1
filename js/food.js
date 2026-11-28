@@ -86,6 +86,7 @@ export function renderFood() {
       </div>
       ${microStrip(t, tg)}
     </div>
+    <p class="muted small diary-hint">Tap a food to change the amount, move it or delete it.</p>
     ${meals}
     ${group('Tools', `<div class="btn-grid">
       ${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}
@@ -382,7 +383,7 @@ function renderFoodDetail() {
     </div>
     <div class="chips">${[0.5, 1, 1.5, 2, 3].map((v) => `<button class="btn chip ${q === v ? 'on' : ''}" data-act="fd-set" data-v="${v}">${v === 0.5 ? '1/2' : v === 1.5 ? '1 1/2' : v}</button>`).join('')}</div>
     <div class="panel sunken fd-macros" id="fd-macros">${fdMacros()}</div>
-    <p class="muted small fd-after">After this: <span class="nw">${fmt(t.cal + (fd.entry ? 0 : f.cal * q))} / ${fmt(tg.cal)} kcal</span> · <span class="nw">protein ${r0(t.p + (fd.entry ? 0 : f.p * q))} / ${tg.p}g</span></p>
+    <p class="muted small fd-after">After this: <span class="nw">${fmt(t.cal + (fd.entry ? 0 : f.cal * q))}/${fmt(tg.cal)} kcal</span> · <span class="nw">${r0(t.p + (fd.entry ? 0 : f.p * q))}/${tg.p}g protein</span></p>
     ${field('Meal', select('meal', MEALS.map((m) => [m, m]), fd.meal, { data: 'data-change="fd-meal"' }))}
     <div class="btn-row">
       ${btn(fd.entry ? 'Save' : `Add to ${fd.meal}`, 'fd-add', { cls: 'primary grow' })}

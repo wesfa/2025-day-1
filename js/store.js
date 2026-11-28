@@ -365,6 +365,14 @@ export function targets(key = dayKey()) {
   const base = S.targets.auto
     ? { ...calcTargets(S.profile, currentWeight()), auto: true }
     : { ...calcTargets(S.profile, currentWeight()), ...S.targets, auto: false };
+  // a correction from your real weight trend ("Use it" on Weight / Today). Protein stays; fat stays at 25% of
+  // the new calories; carbs take the rest - so a cut comes out of both, not just your training fuel.
+  const adj = S.targets.auto ? Math.round(Number(S.targets.adj) || 0) : 0;
+  if (adj) {
+    base.cal += adj;
+    base.f = Math.round((base.cal * 0.25) / 9 / 5) * 5;
+    base.c = Math.max(0, Math.round((base.cal - base.p * 4 - base.f * 9) / 4 / 5) * 5);
+  }
   const trainingDay = dayType(key) === 'train';
   const micro = microTargets(S.profile, trainingDay);
   if (!S.targets.auto) {

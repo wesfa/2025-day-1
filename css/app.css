@@ -495,6 +495,7 @@ body.resting { padding-bottom: calc(var(--tb-h) + env(safe-area-inset-bottom) + 
 .ex-head { display: flex; align-items: center; gap: 6px; margin: -4px 0 2px; }
 .inp.no-load { visibility: hidden; }
 .co-why { font-size: 13px; }
+.ex-setno { font-size: 13px; color: var(--muted); white-space: nowrap; }
 .ex-name { flex: 1; min-width: 0; min-height: 40px; padding: 6px 0; border: 0; background: none; font: inherit; font-size: 18px; font-weight: 700; color: var(--text); text-align: left; cursor: pointer; }
 .group.ex-block { padding-top: 10px; }
 [data-theme="dusk"] .group.ex-block { padding-top: 10px; }
@@ -642,6 +643,21 @@ label.btn { cursor: pointer; }
 .wg-day { background: var(--field); padding: 6px 8px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; box-shadow: inset 2px 2px 0 var(--lo), inset -2px -2px 0 var(--hi); }
 .wg-day.today .wg-h { color: var(--accent); }
 .wg-h { font-weight: 700; width: 100%; font-size: 14px; }
+details.wg-day { display: block; }
+details.wg-day > summary .muted { margin-left: 6px; font-weight: 400; }
+.goal-adj { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+.goal-adj > span { flex: 1; }
+.goal-adj .btn { flex: none; white-space: nowrap; }
+.ga-prev { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); }
+.goal-adj.compact { padding-top: 6px; padding-bottom: 6px; }
+.goal-adj:not(.compact) { flex-wrap: wrap; align-items: flex-start; }
+.goal-adj:not(.compact) > span { flex: 1 1 calc(100% - 30px); }
+.goal-adj:not(.compact) > .btn { margin-left: auto; }
+details.wg-day > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; list-style: none; }
+details.wg-day > summary::-webkit-details-marker { display: none; }
+details.wg-day > summary::after { content: '\25B8'; margin-left: auto; color: var(--muted); }
+details.wg-day[open] > summary::after { content: '\25BE'; }
+details.wg-day[open] { display: flex; }
 .wg-busy { background: repeating-linear-gradient(45deg, var(--face) 0 4px, var(--light) 4px 8px); padding: 2px 6px; color: var(--muted); }
 .wg-item { padding: 2px 6px; border: 1px solid var(--lo); }
 .wg-item.moved, .moved-key { background: var(--tip); }
@@ -978,7 +994,8 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 [data-theme="dusk"] .tb-btn { width: 30px; height: 26px; background: none; border: 1px solid transparent; }
 [data-theme="dusk"] .tb-btn:active { border-color: var(--line); }
 [data-theme="dusk"] .win-body { padding: 12px 12px 12px; }
-[data-theme="dusk"] .modal-back { background: rgba(10, 6, 4, 0.82); }
+[data-theme="dusk"] .modal-back { background: rgba(10, 6, 4, 0.92); }
+.modal-wrap.full { padding-bottom: env(safe-area-inset-bottom); }
 [data-theme="dusk"] .modal-wrap > .win { background: rgb(26, 17, 12); border-color: var(--line); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); }
 [data-theme="dusk"] .px-ico { filter: drop-shadow(0 0 2px rgba(255, 140, 40, 0.45)); }
 
@@ -1202,8 +1219,8 @@ html .c-fib { color: var(--mfib); } html .c-na { color: var(--mna); } html .c-po
 .rk-ov-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rk-name { font-size: 22px; }
 .rk-badge { flex: none; image-rendering: pixelated; }
-.rk-ladder { display: flex; flex-wrap: nowrap; justify-content: space-between; gap: 2px; margin: 6px 0 4px; }
-.rk-ladder span { font-size: 11px; padding: 2px 3px; white-space: nowrap; color: var(--tc); border: 1px solid transparent; opacity: 0.85; text-shadow: 0 0 1px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6); background: rgba(0, 0, 0, 0.25); }
+.rk-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin: 6px 0 4px; }
+.rk-ladder span { font-size: 13px; padding: 3px 2px; text-align: center; white-space: nowrap; color: var(--tc); border: 1px solid transparent; opacity: 0.85; text-shadow: 0 0 1px rgba(0, 0, 0, 0.9), 0 0 6px rgba(0, 0, 0, 0.6); background: rgba(0, 0, 0, 0.25); }
 .rk-ladder span.on { border-color: var(--tc); opacity: 1; }
 .rk-row { align-items: center; gap: 10px; }
 .rk-row .row-main { gap: 2px; }

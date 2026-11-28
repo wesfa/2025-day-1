@@ -112,7 +112,7 @@ export function bulkQuality() {
   const did = doneWorkouts().filter((w) => (w.date || '') >= addDays(dayKey(), -20)).length;
   if (S.workouts.length) {
     const score = Math.min(100, Math.round((did / plan) * 100));
-    factors.push({ key: 'train', label: 'Training', score, msg: `${did} of ${plan} planned workouts in 3 weeks`, fix: score < 70 ? 'A surplus only turns into muscle if you lift - don\'t skip days.' : '', w: 10 });
+    factors.push({ key: 'train', label: 'Training', score, msg: `${did} of ${plan} workouts (3 wks)`, fix: score < 70 ? 'A surplus only turns into muscle if you lift - don\'t skip days.' : '', w: 10 });
   }
 
   if (!factors.length) return { cut, factors, score: null };
@@ -154,10 +154,10 @@ export function measureGroup() {
     const prev = arr[i + 1] && arr[i + 1][1];
     const d = prev && num(prev.waist) && num(v.waist) ? num(v.waist) - num(prev.waist) : null;
     const extra = PARTS.slice(1).filter(([p]) => num(v[p])).map(([p, l]) => `${l} ${r1(num(v[p]))}`).join(' · ');
-    return `<div class="row static"><span class="row-main"><span class="row-name">${esc(prettyDay(k))}</span>${extra ? `<span class="row-sub">${esc(extra)}</span>` : ''}</span>
+    // tap a past measurement to delete it (no x on every row)
+    return `<button class="row" data-act="ms-del" data-k="${k}" aria-label="${esc(prettyDay(k))} - tap to delete"><span class="row-main"><span class="row-name">${esc(prettyDay(k))}</span>${extra ? `<span class="row-sub">${esc(extra)}</span>` : ''}</span>
       ${d != null ? `<span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${r1(d)}</span>` : ''}
-      <span class="row-num">${num(v.waist) ? r1(num(v.waist)) + '<small> in</small>' : '-'}</span>
-      <button class="btn sq" data-act="ms-del" data-k="${k}" aria-label="Delete">${icon('close', 8)}</button></div>`;
+      <span class="row-num">${num(v.waist) ? r1(num(v.waist)) + '<small> in</small>' : '-'}</span></button>`;
   }).join('');
   return group('Measurements', `
     ${due ? '<p class="alert soft">Measure your waist today - every 2 weeks is enough.</p>' : ''}
@@ -167,7 +167,7 @@ export function measureGroup() {
     </form>
     <p class="muted small">Tape snug, not tight. Waist at the belly button, relaxed, first thing in the morning. Arm and thigh at the biggest point.</p>
     ${bf != null && S.profile.sex !== 'f' ? `<p>Estimated body fat: <b class="vt">${r1(bf)}%</b> <span class="muted small">(tape method from waist, neck and height - rough)</span></p>` : ''}
-    ${rows}
+    ${rows ? `<p class="muted small">Tap a past entry to delete it.</p>${rows}` : ''}
   `);
 }
 
@@ -182,7 +182,7 @@ on({
     save(true); buzz(HAPTIC.success); toast('Measurements saved', 'check'); rerender();
   },
   'ms-del': async (el) => {
-    if (!(await confirmBox(`Delete measurements from ${esc(prettyDay(el.dataset.k))}?`))) return;
+    if (!(await confirmBox(`Delete the measurements from ${esc(prettyDay(el.dataset.k))}?`, 'Delete measurements', 'Delete'))) return;
     delete S.measure[el.dataset.k]; save(); rerender();
   },
 });

@@ -1,8 +1,8 @@
 // Weight: daily weigh-in, trend, projection, pixel chart.
-import { S, save, weightEntries, latestWeight, avgWeight, targets } from './store.js';
+import { S, save, weightEntries, latestWeight, avgWeight, targets, totals } from './store.js';
 import { weeklyRate } from './calc.js';
 import { dayKey, addDays, prettyDay, shortDate, esc, r1, num, daysBetween, parseDay, buzz, HAPTIC } from './util.js';
-import { win, group, bar, btn, field, on, rerender, toast, confirmBox } from './ui.js';
+import { win, group, bar, btn, field, on, rerender, toast, confirmBox, openModal, closeModal } from './ui.js';
 import { icon } from './icons.js';
 import { bulkGroup, measureGroup } from './bulk.js';
 
@@ -51,6 +51,50 @@ export function paceStatus() {
   return { status: fast ? 'fast' : slow ? 'slow' : 'ok', rate: r, plan };
 }
 
+// When the scale and the calorie goal disagree, the scale wins: what you actually ate over the last 2 weeks,
+// minus (or plus) the extra gain beyond your plan (1 lb/week = 500 kcal a day). null = nothing to change.
+export function goalSuggestion() {
+  const pc = paceStatus();
+  if (!pc || (pc.status !== 'fast' && pc.status !== 'slow')) return null;
+  if (S.targets.adjAt && Date.now() - S.targets.adjAt < 10 * 86400000) return null;   // give the last change time to show
+  const today = dayKey();
+  const days = [];
+  for (let i = 1; i <= 14; i++) { const k = addDays(today, -i); if (S.days[k] && (S.days[k].food || []).length) days.push(k); }
+  if (days.length < 7) return null;
+  const ate = days.reduce((a, k) => a + totals(k).cal, 0) / days.length;
+  const ideal = ate - (pc.rate - pc.plan) * 500;
+  const cur = targets().avgCal;
+  // safe steps: at most 500 kcal per change (check again in 10 days), and never below a floor for a growing
+  // athlete (12 kcal per lb while bulking, 10 while cutting) - big drops cost training and growth
+  let delta = Math.max(-500, Math.min(500, ideal - cur));
+  const floor = Math.round(weightStats().now * (pc.plan > 0 ? 12 : 10));
+  if (cur + delta < floor) delta = floor - cur;
+  delta = Math.round(delta / 10) * 10;
+  const want = cur + delta;
+  if (Math.abs(delta) < 150 || Math.sign(delta) !== (pc.status === 'fast' ? -1 : 1) * Math.sign(pc.plan || 1)) return null;
+  // what today's numbers become if he taps "Use it"
+  const now = targets(today);
+  const keep = S.targets.adj;
+  S.targets.adj = (Number(keep) || 0) + delta;
+  const then = targets(today);
+  S.targets.adj = keep;
+  return { want, cur, delta, pc, ate: Math.round(ate), now, then };
+}
+// compact = two lines for Today; the full box (Weight, weekly report) previews today's new numbers
+export function goalSuggestionBox(s, compact = false) {
+  if (!s) return '';
+  const r = (v) => `${v > 0 ? '+' : ''}${r1(v)}`;
+  const n = (v) => Math.round(v).toLocaleString('en-US');
+  const lead = `${s.pc.status === 'fast' ? 'Gaining' : 'Only gaining'} ${r(s.pc.rate)} lb/wk (plan ${r(s.pc.plan)})`;
+  const move = `${s.delta < 0 ? 'lower' : 'raise'} your goal <b class="nw">~${n(Math.abs(s.delta))} kcal</b>`;
+  const today = s.then.cal - s.now.cal;
+  const text = compact
+    ? `${lead} - ${move}`
+    : `${lead}: ${move} a day (today ${today > 0 ? '+' : '-'}${n(Math.abs(today))}). You've averaged ${n(s.ate)} kcal over the last 14 days; small steps, then check again in 10 days.
+       <span class="ga-prev">Today's goal ${n(s.now.cal)} &rarr; <b>${n(s.then.cal)}</b> kcal · carbs ${s.now.c} &rarr; ${s.then.c}g · fat ${s.now.f} &rarr; ${s.then.f}g · protein stays ${s.then.p}g</span>`;
+  return `<div class="alert soft goal-adj ${compact ? 'compact' : ''}">${icon('scale', 16)}<span>${text}</span>${btn('Use it', 'goal-adjust', { cls: 'primary', data: `data-d="${s.delta}"` })}</div>`;
+}
+
 export function renderWeight() {
   const st = weightStats();
   const k = wv.date;
@@ -68,7 +112,9 @@ export function renderWeight() {
     const tg = targets();
     paceMsg = `Trend: <b>${r > 0 ? '+' : ''}${r1(r)} lb/week</b> (plan ${plan > 0 ? '+' : ''}${r1(plan)}). `;
     if (Math.abs(st.toGo) <= 1) paceMsg += 'You\'re at your goal - eat at maintenance.';
-    else if (tooFast) paceMsg += st.dir > 0 ? 'Faster than your plan - some of it is fat. Trim ~250 kcal a day.' : 'Faster than your plan - eat ~250 kcal more to hold strength.';
+    else if (tooFast && goalSuggestion()) paceMsg += 'Faster than your plan.';
+    else if (tooFast && S.targets.adjAt && Date.now() - S.targets.adjAt < 10 * 86400000) paceMsg += 'Faster than your plan - your goal was just lowered; give it 10 days to show on the scale.';
+    else if (tooFast) paceMsg += st.dir > 0 ? 'Faster than your plan - some of it is fat. Eat a bit less (sweets and drinks first).' : 'Faster than your plan - eat a bit more to hold strength.';
     else if (onPace) paceMsg += 'Right on track. Keep doing what you\'re doing.';
     else if (st.dir > 0) paceMsg += `Gaining slow - add ~250 kcal/day (your average is ${tg.avgCal}).`;
     else paceMsg += `Losing slow - trim ~250 kcal/day, mostly from snacks/drinks.`;
@@ -85,7 +131,6 @@ export function renderWeight() {
         <input id="w-in" class="inp big-num" type="number" inputmode="decimal" step="0.1" placeholder="${st.latest ?? S.profile.startWeight}" value="${logged ?? ''}">
         <span class="unit">lb</span>
         ${btn(logged != null ? 'Update' : 'Save', 'w-save', { cls: 'primary', type: 'submit' })}
-        ${logged != null ? btn('Delete', 'w-del', { cls: 'danger', data: `data-k="${k}"` }) : ''}
       </form>
       <p class="muted small">Same time daily: right after you wake up + bathroom, before food or water.</p>`)}
 
@@ -96,6 +141,7 @@ export function renderWeight() {
       <div class="stat sunken"><span>To go</span><b class="vt">${r1(Math.abs(st.toGo))}<small> lb</small></b></div>
     </div>
     <div class="goal-bar">${bar(Math.max(0, st.progress) * 100, 100)}<span class="muted small">${Math.round(Math.max(0, Math.min(1, st.progress)) * 100)}% of the way</span></div>
+    ${goalSuggestionBox(goalSuggestion())}
     <p class="pace">${paceMsg}${st.eta ? ` At this pace you hit ${r1(st.goal)} around <b>${months[st.eta.getMonth()]} ${st.eta.getDate()}</b>.` : ''}</p>
 
     ${bulkGroup()}
@@ -122,15 +168,38 @@ on({
   },
   'w-day': (el) => { const n = addDays(wv.date, Number(el.dataset.d)); if (n <= dayKey()) { wv.date = n; rerender(); } },
   'w-range': (el) => { wv.range = Number(el.dataset.r); rerender(); },
-  // tap a weigh-in in the list to fix or delete it up top
-  'w-pick': (el) => { wv.date = el.dataset.k; rerender(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  'goal-adjust': (el) => {
+    const d = Number(el.dataset.d) || 0;
+    if (S.targets.auto) S.targets.adj = (Number(S.targets.adj) || 0) + d;
+    else S.targets.cal = Math.max(1200, (Number(S.targets.cal) || 0) + d);
+    S.targets.adjAt = Date.now();
+    save(); buzz(HAPTIC.success);
+    toast(`Goal is now ${targets().avgCal.toLocaleString('en-US')} kcal a day (training days a bit more)`, 'check');
+    rerender();
+  },
+  // tap a weigh-in in the list to fix or delete it
+  'w-pick': (el) => openWeighEdit(el.dataset.k),
+  'w-edit-save': (el) => {
+    const k = el.dataset.k; const v = document.getElementById('w-edit').value;
+    if (logWeight(k, v)) { closeModal(); toast(`Saved ${r1(Number(v))} lb`, 'scale'); rerender(); }
+  },
   'w-del': async (el) => {
     if (!(await confirmBox(`Delete weigh-in for ${esc(prettyDay(el.dataset.k))}?`))) return;
-    delete S.weights[el.dataset.k]; save(); rerender();
+    delete S.weights[el.dataset.k]; save(); closeModal(); rerender();
   },
 });
 
 export function resetWeightView() { wv.date = dayKey(); }
+
+function openWeighEdit(k) {
+  openModal(() => win(`Weigh-in - ${esc(prettyDay(k))}`, `
+    <form class="weigh-form" onsubmit="return false">
+      <input id="w-edit" class="inp big-num" type="number" inputmode="decimal" step="0.1" value="${S.weights[k] ?? ''}">
+      <span class="unit">lb</span>
+    </form>
+    <div class="btn-row">${btn('Save', 'w-edit-save', { cls: 'primary grow', data: `data-k="${k}"` })}${btn('Delete', 'w-del', { cls: 'danger', data: `data-k="${k}"` })}${btn('Cancel', 'modal-close')}</div>
+  `, { cls: 'dialog', close: 'modal-close', ico: 'scale' }));
+}
 
 // ---------- Pixel chart ----------
 export function drawWeightChart() {

@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.16.0';
+export const APP_VERSION = '1.17.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',
@@ -116,6 +116,7 @@ export function renderSettings() {
         <div class="stat sunken"><span>Potassium</span><b class="vt">${fmtN(tg.pot)}mg</b></div>
       </div>
       <p class="muted small">How it's figured: maintenance ~${calc.maintenance} kcal (${esc((PHASES[p.phase] || PHASES.off).label.toLowerCase())}) ${calc.delta >= 0 ? '+' : '-'} ${Math.abs(calc.delta)} to ${calc.dir > 0 ? 'gain' : calc.dir < 0 ? 'lose' : 'hold'} ${p.rate} lb/week. Protein ~1g per lb, fat 25%, the rest carbs - linemen need carbs to fuel training. Fiber and potassium are daily goals for your age; sodium is a max, raised by 1,000mg on training days to replace sweat. Auto mode updates as your weight changes.</p>
+      ${auto && Number(S.targets.adj) ? `<p class="ok-line">${icon('scale', 16)} Calories ${S.targets.adj > 0 ? '+' : ''}${fmtN(S.targets.adj)} from your weight trend. ${btn('Undo', 't-adj-undo', { cls: 'chip' })}</p>` : ''}
       <label class="check"><input type="checkbox" data-change="t-auto" ${auto ? 'checked' : ''}><span>Auto-calculate (recommended)</span></label>
       ${auto ? '' : `<form id="tg" onsubmit="return false"><div class="grid2">
         ${field('Calories', numInput('cal', S.targets.cal))}${field('Protein g', numInput('p', S.targets.p))}
@@ -185,6 +186,7 @@ on({
     });
     save(); toast('Profile saved - targets updated'); rerender();
   },
+  't-adj-undo': () => { S.targets.adj = 0; S.targets.adjAt = 0; save(); toast('Back to the calculated goal', 'check'); rerender(); },
   't-auto': (el) => {
     S.targets.auto = el.checked;
     if (!el.checked) {
@@ -384,16 +386,21 @@ export function renderReminders() {
     </div>`).join('');
 
   // the next 7 real days, with holidays / early dismissal / trips applied
+  let anyMoved = false;
   const grid = `<div class="week-grid">${[0, 1, 2, 3, 4, 5, 6].map((i) => {
     const key = addDays(today, i);
     const rule = dateRule(key);
     const plan = planFor(key);
+    if (plan.some((it) => it.moved)) anyMoved = true;
     const busy = busyOn(key);
-    return `<div class="wg-day ${i === 0 ? 'today' : ''}"><div class="wg-h">${DOW[parseDay(key).getDay()]} ${shortDate(key)}</div>
-      ${rule ? `<div class="wg-rule kind-${rule.kind}">${esc(rule.label)}</div>` : ''}
+    const body = `${rule ? `<div class="wg-rule kind-${rule.kind}">${esc(rule.label)}</div>` : ''}
       ${busy.map(([s, e, l]) => `<div class="wg-busy">${esc(l)} ${fmtTime(toHHMM(s))}-${fmtTime(toHHMM(e))}</div>`).join('')}
-      ${plan.map((it) => `<div class="wg-item ${it.moved ? 'moved' : ''}"><b>${fmtTime(it.time)}</b> ${esc(it.labels.join(' + '))}</div>`).join('') || '<div class="muted small">-</div>'}
-    </div>`;
+      ${plan.map((it) => `<div class="wg-item ${it.moved ? 'moved' : ''}"><b>${fmtTime(it.time)}</b> ${esc(it.labels.join(' + '))}</div>`).join('') || '<div class="muted small">-</div>'}`;
+    const head = `${i === 0 ? 'Today' : DOW[parseDay(key).getDay()]} ${shortDate(key)}`;
+    // today is open; tap another day to see its times
+    return i === 0
+      ? `<div class="wg-day today"><div class="wg-h">${head}</div>${body}</div>`
+      : `<details class="wg-day"><summary class="wg-h">${head}<span class="muted small">· ${rule ? `${esc(DATE_KINDS[rule.kind])} · ` : ''}${plan.length} reminder${plan.length === 1 ? '' : 's'}</span></summary>${body}</details>`;
   }).join('')}</div>`;
 
   const push = N.method === 'ntfy' && N.topic
@@ -429,7 +436,7 @@ export function renderReminders() {
       ${past ? `<p class="muted small">${past} past date${past > 1 ? 's' : ''} hidden.</p>` : ''}
       <div class="btn-row">${btn('+ Add dates', 'date-add')}${btn('Import schedule file', 'sched-import', { ico: 'floppy' })}</div>`)}
     ${group('Reminders', remRows + `<div class="btn-row">${btn('+ Custom reminder', 'rem-add')}${btn('Restore defaults', 'rem-reset')}</div>`)}
-    ${group('Next 7 days', `<p class="muted small">Gray = busy. <span class="moved-key">Highlighted</span> = moved to fit around school/work.</p>${grid}`)}
+    ${group('Next 7 days', `<p class="muted small">Striped = busy.${anyMoved ? ' <span class="moved-key">Highlighted</span> = moved to fit around school/work.' : ''} Tap a day to see its times.</p>${grid}`)}
     <div id="push-setup">${group('Phone alerts (push notifications)', push)}</div>
     ${group('Calendar alerts (backup option)', `
       <p class="muted small">Adds repeating events with alerts to your phone's calendar. Works with no extra app, but it only knows your normal week - not days off or trips (phone alerts do). Re-download if your schedule changes (delete the old "Macros" events first).</p>
@@ -502,7 +509,7 @@ function relText(r) {
   if (!r.rel) return '';
   const m = Number(r.off) || 0;
   const what = r.rel === 'bed' ? 'bedtime' : 'wake-up';
-  return m === 0 ? ` (at ${what})` : ` (${Math.abs(m)} min ${m < 0 ? 'before' : 'after'} ${what})`;
+  return m === 0 ? ` (at ${what})` : ` (${Math.abs(m)}m ${m < 0 ? 'before' : 'after'} ${what === 'bedtime' ? 'bed' : what})`;
 }
 
 // ---- reminder editor ----
