@@ -81,6 +81,12 @@ export function fmtDuration(ms) {
   return h ? `${h}:${pad2(m)}:${pad2(sec)}` : `${m}:${pad2(sec)}`;
 }
 
+// A length of time in words: "45 min", "1h 10m"
+export function fmtLength(ms) {
+  const m = Math.max(0, Math.round(ms / 60000));
+  return m >= 60 ? `${Math.floor(m / 60)}h ${pad2(m % 60)}m` : `${m} min`;
+}
+
 // Save/share a file. Uses the share sheet on phones when possible, else a download.
 export async function saveFile(name, text, type = 'application/json') {
   const blob = new Blob([text], { type });

@@ -50,9 +50,11 @@ export function renderWeight() {
   if (st.rate != null) {
     const r = st.rate;
     const onPace = st.dir > 0 ? r >= plan * 0.6 : r <= plan * 0.6;
+    const tooFast = st.dir > 0 ? r > Math.max(plan * 1.8, plan + 0.5) : r < Math.min(plan * 1.8, plan - 0.5);
     const tg = targets();
     paceMsg = `Trend: <b>${r > 0 ? '+' : ''}${r1(r)} lb/week</b> (plan ${plan > 0 ? '+' : ''}${r1(plan)}). `;
     if (Math.abs(st.toGo) <= 1) paceMsg += 'You\'re at your goal - eat at maintenance.';
+    else if (tooFast) paceMsg += st.dir > 0 ? 'Faster than your plan - some of it is fat. Trim ~250 kcal a day.' : 'Faster than your plan - eat ~250 kcal more to hold strength.';
     else if (onPace) paceMsg += 'Right on track. Keep doing what you\'re doing.';
     else if (st.dir > 0) paceMsg += `Gaining slow - add ~250 kcal/day (your average is ${tg.avgCal}).`;
     else paceMsg += `Losing slow - trim ~250 kcal/day, mostly from snacks/drinks.`;
@@ -60,23 +62,23 @@ export function renderWeight() {
 
   return win('Weight Tracker', `
     ${group(k === dayKey() ? 'Today\'s weigh-in' : `Weigh-in for ${esc(prettyDay(k))}`, `
-      <form class="weigh-form" onsubmit="return false">
-        <input id="w-in" class="inp big-num" type="number" inputmode="decimal" step="0.1" placeholder="${st.latest ?? S.profile.startWeight}" value="${logged ?? ''}">
-        <span class="unit">lb</span>
-        ${btn(logged != null ? 'Update' : 'Save', 'w-save', { cls: 'primary', type: 'submit' })}
-      </form>
       <div class="datenav small-nav">
         <button class="btn sq" data-act="w-day" data-d="-1" aria-label="Previous day">${icon('left', 10)}</button>
         <span class="grow center">${esc(prettyDay(k))}</span>
         <button class="btn sq" data-act="w-day" data-d="1" ${k >= dayKey() ? 'disabled' : ''} aria-label="Next day">${icon('right', 10)}</button>
       </div>
+      <form class="weigh-form" onsubmit="return false">
+        <input id="w-in" class="inp big-num" type="number" inputmode="decimal" step="0.1" placeholder="${st.latest ?? S.profile.startWeight}" value="${logged ?? ''}">
+        <span class="unit">lb</span>
+        ${btn(logged != null ? 'Update' : 'Save', 'w-save', { cls: 'primary', type: 'submit' })}
+      </form>
       <p class="muted small">Same time daily: right after you wake up + bathroom, before food or water.</p>`)}
 
     <div class="stat-grid">
       <div class="stat sunken"><span>Start</span><b class="vt">${r1(st.start)}</b></div>
       <div class="stat sunken"><span>Now (7d avg)</span><b class="vt">${r1(st.now)}</b></div>
       <div class="stat sunken"><span>Goal</span><b class="vt">${r1(st.goal)}</b></div>
-      <div class="stat sunken"><span>To go</span><b class="vt">${st.toGo > 0 ? '+' : ''}${r1(st.toGo)}</b></div>
+      <div class="stat sunken"><span>To go</span><b class="vt">${r1(Math.abs(st.toGo))}<small> lb</small></b></div>
     </div>
     <div class="goal-bar">${bar(Math.max(0, st.progress) * 100, 100)}<span class="muted small">${Math.round(Math.max(0, Math.min(1, st.progress)) * 100)}% of the way</span></div>
     <p class="pace">${paceMsg}${st.eta ? ` At this pace you hit ${r1(st.goal)} around <b>${months[st.eta.getMonth()]} ${st.eta.getDate()}</b>.` : ''}</p>
@@ -146,8 +148,11 @@ export function drawWeightChart() {
     return;
   }
   const span = Math.max(1, daysBetween(from, today));
-  let lo = Math.min(...pts.map((p) => p[1]), goal);
-  let hi = Math.max(...pts.map((p) => p[1]), goal);
+  // scale to your weigh-ins; the goal line only joins in when it's close, otherwise it's a label at the edge
+  const dlo = Math.min(...pts.map((p) => p[1])); const dhi = Math.max(...pts.map((p) => p[1]));
+  const goalIn = goal >= dlo - 3 && goal <= dhi + 3;
+  let lo = goalIn ? Math.min(dlo, goal) : dlo;
+  let hi = goalIn ? Math.max(dhi, goal) : dhi;
   if (hi - lo < 4) { const m = (hi + lo) / 2; lo = m - 2; hi = m + 2; }
   const padV = (hi - lo) * 0.1; lo -= padV; hi += padV;
   const X = (k) => Math.round(2 + (daysBetween(from, k) / span) * (W - 5));
@@ -168,7 +173,7 @@ export function drawWeightChart() {
   // grid
   for (let i = 1; i < 4; i++) line(0, Math.round((H / 4) * i), W - 1, Math.round((H / 4) * i), C.grid, 1);
   // goal
-  line(0, Y(goal), W - 1, Y(goal), C.goal, 2);
+  if (goalIn) line(0, Y(goal), W - 1, Y(goal), C.goal, 2);
   // 7-day average line
   let prev = null;
   for (const [k] of pts) {
@@ -185,6 +190,6 @@ export function drawWeightChart() {
     g.fillStyle = C.dot; g.fillRect(x - 1, y - 1, 2, 2);
   }
   if (lbl) {
-    lbl.innerHTML = `<span class="cl-hi">${r1(hi)}</span><span class="cl-lo">${r1(lo)}</span><span class="cl-from">${shortDate(from)}</span><span class="cl-to">${shortDate(today)}</span>`;
+    lbl.innerHTML = `${goalIn ? '' : `<span class="cl-goal">Goal ${r1(goal)} ${goal > hi ? '&uarr;' : '&darr;'}</span>`}<span class="cl-hi">${r1(hi)}</span><span class="cl-lo">${r1(lo)}</span><span class="cl-from">${shortDate(from)}</span><span class="cl-to">${shortDate(today)}</span>`;
   }
 }

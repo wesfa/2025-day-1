@@ -42,8 +42,9 @@ export function bulkQuality() {
     if (!cut) {
       if (pct < 0.1) { score = 45; msg = `Barely gaining (${r1(rate)} lb/week)`; fix = 'Add ~250 kcal a day - a shake or an extra snack.'; }
       else if (pct < 0.15) { score = 75; msg = `Gaining slowly (${r1(rate)} lb/week)`; fix = 'A little more food (+150 kcal/day) speeds it up.'; }
-      else if (pct <= 0.7) { score = 100; msg = `Gaining ${r1(rate)} lb/week - a lean-bulk pace`; }
-      else if (pct <= 1.0) { score = 60; msg = `Gaining fast (${r1(rate)} lb/week)`; fix = 'Faster than muscle can be built - drop ~200 kcal a day.'; }
+      else if (pct <= 0.5) { score = 100; msg = `Gaining ${r1(rate)} lb/week - a lean-bulk pace`; }
+      else if (pct <= 0.75) { score = 75; msg = `Gaining a bit fast (${r1(rate)} lb/week)`; fix = 'Trim ~200 kcal a day to keep it lean.'; }
+      else if (pct <= 1.0) { score = 55; msg = `Gaining fast (${r1(rate)} lb/week)`; fix = 'Faster than muscle can be built - drop ~250 kcal a day.'; }
       else { score = 30; msg = `Gaining very fast (${r1(rate)} lb/week)`; fix = 'Most of this is fat and water - drop ~350 kcal a day.'; }
     } else {
       const loss = -pct;

@@ -16,9 +16,14 @@ export function weekStats(endKey = dayKey()) {
   }
   const logged = days.filter((d) => d.logged);
   const n = logged.length || 1;
+  // compare against each day's own goal (training days eat more), averaged - the same number the grocery review uses
+  if (logged.length) {
+    tg.cal = Math.round(logged.reduce((a, d) => a + targets(d.k).cal, 0) / logged.length);
+    tg.p = Math.round(logged.reduce((a, d) => a + targets(d.k).p, 0) / logged.length);
+  }
   const avgCal = logged.reduce((a, d) => a + d.cal, 0) / n;
   const avgP = logged.reduce((a, d) => a + d.p, 0) / n;
-  const proteinHits = logged.filter((d) => d.p >= tg.p * 0.9).length;
+  const proteinHits = logged.filter((d) => d.p >= targets(d.k).p * 0.9).length;
   const calHits = logged.filter((d) => { const t = targets(d.k).cal; return Math.abs(d.cal - t) <= t * 0.1; }).length;
   const from = addDays(endKey, -6);
   const lifts = doneWorkouts().filter((w) => w.date >= from && w.date <= endKey).length;
@@ -37,7 +42,7 @@ function verdict(w) {
   const dir = w.tg.dir;
   if (w.loggedDays < 5) tips.push('Log every day - you can\'t fix what you don\'t track. Use Recent + Saved Meals to make it 10 seconds.');
   if (w.proteinHits < Math.min(5, w.loggedDays)) tips.push(`Protein is the #1 lever. Add a shake or Greek yogurt to hit ${w.tg.p}g.`);
-  if (dir > 0 && w.avgCal < w.tg.cal * 0.9 && w.loggedDays) tips.push(`You're averaging ${fmt(w.avgCal)} vs ${fmt(w.tg.cal)}. To gain, add a 4th meal: PB&J + whole milk is ~540 kcal.`);
+  if (dir > 0 && w.avgCal < w.tg.cal * 0.9 && w.loggedDays) tips.push(`You're averaging ${fmt(w.avgCal)} kcal vs your goals' average of ${fmt(w.tg.cal)}. To gain, add a 4th meal: PB&J + whole milk is ~540 kcal.`);
   if (dir < 0 && w.avgCal > w.tg.cal * 1.1 && w.loggedDays) tips.push('Running over on calories. Swap soda/sweet tea for water and keep protein high.');
   if (w.lifts < 3) tips.push('Aim for 3-4 lifts a week. Linemen are built in the weight room.');
   if (w.weighIns < 5) tips.push('Weigh in daily - the 7-day average is what matters, and it needs data.');
@@ -46,12 +51,12 @@ function verdict(w) {
 }
 
 export function openWeekly() {
-  const w = weekStats();
+  const w = weekStats(addDays(dayKey(), -1));   // the last 7 full days - today isn't over yet
   const max = Math.max(w.tg.cal * 1.2, ...w.days.map((d) => d.cal));
   const change = w.wNow != null && w.wPrev != null ? w.wNow - w.wPrev : null;
   const bars = w.days.map((d) => {
     const h = Math.round((d.cal / max) * 100);
-    const pOk = d.p >= w.tg.p * 0.9;
+    const pOk = d.p >= targets(d.k).p * 0.9;
     return `<div class="wk-col ${d.k === dayKey() ? 'today' : ''}">
       <div class="wk-bar">${d.cal > 0 ? `<div class="wk-fill ${d.cal > w.tg.cal * 1.1 ? 'over' : ''}" style="height:${h}%"></div>` : ''}<div class="wk-goal" style="bottom:${(w.tg.cal / max) * 100}%"></div></div>
       <div class="wk-d">${DOW1[d.dow]}</div>
@@ -59,7 +64,7 @@ export function openWeekly() {
     </div>`;
   }).join('');
   openModal(() => win('Weekly Report', `
-    <p class="muted small">Last 7 days. Bars = calories (red line = goal). Under each day: protein (check = hit it).</p>
+    <p class="muted small">The last 7 full days (through yesterday). Bars = calories, line = your average goal of ${fmt(w.tg.cal)}. Under each day: protein (check = hit it).</p>
     <div class="wk-chart sunken">${bars}</div>
     <div class="stat-grid">
       <div class="stat sunken"><span>Avg calories</span><b class="vt">${fmt(w.avgCal)}</b></div>
@@ -67,7 +72,7 @@ export function openWeekly() {
       <div class="stat sunken"><span>Protein days</span><b class="vt">${w.proteinHits}/7</b></div>
       <div class="stat sunken"><span>Lifts</span><b class="vt">${w.lifts}</b></div>
       <div class="stat sunken"><span>Days logged</span><b class="vt">${w.loggedDays}/7</b></div>
-      <div class="stat sunken"><span>Weight vs last wk</span><b class="vt">${change == null ? '-' : (change > 0 ? '+' : '') + r1(change)}</b></div>
+      <div class="stat sunken"><span>Weight vs last wk</span><b class="vt">${change == null ? '-' : `${change > 0 ? '+' : ''}${r1(change)}<small> lb</small>`}</b></div>
     </div>
     ${group('Coach', `<ul class="coach">${verdict(w).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`)}
     <div class="btn-row">${btn('Close', 'modal-close', { cls: 'grow' })}</div>

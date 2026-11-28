@@ -108,7 +108,7 @@ export function sleepCard({ compact = false } = {}) {
     </div>`;
   }
   let out = '';
-  if (night && !compact) {
+  if (night && !compact && h < 12) {   // after the morning, last night's sleep lives on the Sleep page
     const m = nightMins(night);
     const short = goalH() * 60 - m;
     out += `<p class="sl-last">${icon('moon', 16)} Last night <b class="vt">${hm(m)}</b>${night.q ? ` · ${QUALITY[night.q]}` : ''}
@@ -160,9 +160,11 @@ export function renderSleep() {
       <div class="stat sunken"><span>Last night</span><b class="vt">${last ? hm(nightMins(last)) : '-'}</b></div>
       <div class="stat sunken"><span>7-day avg</span><b class="vt">${st.avg != null ? hm(st.avg) : '-'}</b></div>
       <div class="stat sunken"><span>Sleep debt (7d)</span><b class="vt ${st.debt > 300 ? 'bad' : ''}">${st.nights.length ? hm(st.debt) : '-'}</b></div>
-      <div class="stat sunken"><span>Bedtime steady</span><b class="vt">${st.spread != null ? `±${Math.round(st.spread)}m` : '-'}</b></div>
+      <div class="stat sunken"><span>Bedtime spread</span><b class="vt">${st.spread != null ? `±${Math.round(st.spread)}m` : '-'}</b></div>
     </div>
-    ${group('Last 14 nights', `${chart()}<p class="muted small">Line = your ${goalH()}h goal.${st.usualBed ? ` Usual bedtime ${fmtTime(st.usualBed)}.` : ''}</p>`)}
+    ${group('Last 14 nights', `${chart()}
+      <div class="sl-key"><span><i class="ok"></i>hit your goal</span><span><i></i>a bit short</span><span><i class="low"></i>2h+ short</span><span><i class="none"></i>not logged</span><span><i class="goal"></i>${goalH()}h goal</span></div>
+      ${st.usualBed ? `<p class="muted small">Usual bedtime ${fmtTime(st.usualBed)}.</p>` : ''}`)}
     ${group('Your bedtime', `
       ${field('Sleep goal', select('goal', [[8, '8 hours'], [8.5, '8.5 hours'], [9, '9 hours - teen athletes'], [9.5, '9.5 hours'], [10, '10 hours']], goalH(), { data: 'data-change="sl-goal"' }))}
       <p>You wake at <b>${fmtTime(S.schedule.wake)}</b> and go to bed at <b>${fmtTime(S.schedule.sleep)}</b>: ${hm(inBed)} in bed.</p>
@@ -200,7 +202,7 @@ function chart() {
     bars += `<text class="sl-day" x="${(i * bw + bw / 2).toFixed(1)}" y="${base + 13}" text-anchor="middle">${DOW1[parseDay(k).getDay()]}</text>`;
   }
   const gy = y(goal).toFixed(1);
-  const grid = [6, 9, 12].map((hh) => `<line class="sl-grid" x1="0" x2="${W}" y1="${y(hh * 60).toFixed(1)}" y2="${y(hh * 60).toFixed(1)}"/><text class="sl-ax" x="2" y="${(y(hh * 60) - 2).toFixed(1)}">${hh}h</text>`).join('');
+  const grid = [6, 9, 12].map((hh) => `<line class="sl-grid" x1="0" x2="${W}" y1="${y(hh * 60).toFixed(1)}" y2="${y(hh * 60).toFixed(1)}"/><text class="sl-ax" x="2" y="${Math.max(10, y(hh * 60) - 2).toFixed(1)}">${hh}h</text>`).join('');
   return `<svg class="sl-chart" viewBox="0 0 ${W} ${Hh}" width="100%" role="img" aria-label="Hours slept, last 14 nights">${grid}${bars}<line class="sl-goal" x1="0" x2="${W}" y1="${gy}" y2="${gy}"/></svg>`;
 }
 

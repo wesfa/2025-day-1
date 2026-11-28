@@ -65,8 +65,8 @@ export function renderToday() {
 
   // --- weigh-in ---
   const weigh = weighed != null
-    ? `<div class="weigh-done">${icon('check', 16)} Weighed in: <b class="vt">${r1(weighed)}</b> lb
-        <span class="muted small">· goal ${r1(wst.goal)} (${wst.toGo > 0 ? '+' : ''}${r1(wst.toGo)} to go)</span></div>`
+    ? `<div class="weigh-done">${icon('check', 16)} <b class="vt">${r1(weighed)}</b> lb today
+        <span class="muted small">trend ${r1(wst.now)} · ${Math.abs(wst.toGo) <= 0.5 ? 'at your goal' : `${r1(Math.abs(wst.toGo))} lb to goal ${r1(wst.goal)}`}</span></div>`
     : `<div class="alert">
         <div class="alert-head">${icon('scale', 20)}<b>Daily weigh-in</b></div>
         <form class="weigh-form" onsubmit="return false">
@@ -112,7 +112,7 @@ export function renderToday() {
     ${due.length ? `<div class="alert soft">${icon('bell', 16)} <span>${due.map((r) => esc(r.label)).join(' · ')}</span></div>` : ''}
     ${tg.dayType ? `<div class="day-type">
       <span class="tag dt-${tg.dayType}">${tg.dayType === 'train' ? 'Training day' : 'Rest day'}</span>
-      <span class="muted small">${tg.dayDelta > 0 ? '+' : ''}${fmt(tg.dayDelta)} kcal vs. your average</span>
+      <span class="muted small">${tg.dayDelta > 0 ? '+' : ''}${fmt(tg.dayDelta)} kcal</span>
       ${doneToday.length || act ? '' : btn(tg.dayType === 'train' ? 'Rest today' : 'Training today', 'day-set', { cls: 'chip', data: `data-type="${tg.dayType === 'train' ? 'rest' : 'train'}"` })}
     </div>` : ''}
     <div class="cal-box panel sunken">
@@ -135,8 +135,6 @@ export function renderToday() {
     ${microStrip(t, tg)}
   `, { ico: 'calendar', cls: 'today-main' })}
 
-  ${sleep ? win('Sleep', sleep, { ico: 'moon' }) : ''}
-
   ${win('Log Food', `
     ${btn('Snap a photo - AI logs it', 'ai-open', { cls: 'primary wide ai-cta', ico: 'camera', data: `data-meal="${mealForNow()}"` })}
     <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}"><span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
@@ -147,6 +145,8 @@ export function renderToday() {
   `, { ico: 'burger' })}
 
   ${win('Training', train, { ico: 'dumbbell' })}
+
+  ${sleep ? win('Sleep', sleep, { ico: 'moon' }) : ''}
 
   <div class="btn-row center bottom-links">${btn('Weekly report', 'weekly', { ico: 'trophy' })}${btn('Reminders', 'nav', { ico: 'bell', data: 'data-to="#/reminders"' })}${btn('Gridlock', 'nav', { ico: 'blocks', data: 'data-to="#/play"' })}</div>
   `;

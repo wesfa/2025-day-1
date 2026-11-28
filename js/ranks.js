@@ -89,7 +89,7 @@ function rankRow(x) {
     ${badge(rk, 30)}
     <span class="row-main">
       <span class="row-name">${esc(ex.name)}</span>
-      <span class="row-sub">Best ${esc(setTxt(x.exId, x.best))} · max ~${esc(maxTxt(x.exId, x.best.m))}</span>
+      <span class="row-sub">Best ${esc(setTxt(x.exId, x.best))}${ex.type === 'body' ? '' : ` · max ~${esc(maxTxt(x.exId, x.best.m))}`}</span>
       <span class="rk-bar"><i style="width:${Math.round(rk.divFrac * 100)}%;background:${rk.color}"></i></span>
       ${x.next ? `<span class="row-sub">${rk.tier === 6 ? esc(x.next.label) : `Next <b style="color:${x.next.rank.color}">${esc(x.next.rank.name)}</b>: ${esc(x.next.label)}`}</span>` : ''}
     </span>

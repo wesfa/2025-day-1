@@ -2,7 +2,7 @@
 import { S, save, getEx, allExercises, activeWorkout, doneWorkouts, lastSetsFor, nextTemplate } from './store.js';
 import { EX_CATS, SET_LABELS, DEFAULT_TEMPLATES } from './program.js';
 import { e1rm, platesFor } from './calc.js';
-import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, buzz, HAPTIC } from './util.js';
+import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, fmtLength, buzz, HAPTIC } from './util.js';
 import { win, group, btn, field, select, on, actions, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
 import { icon } from './icons.js';
 import { MUSCLES, EQUIPMENT, EX_META } from './exlib.js';
@@ -12,6 +12,24 @@ import { coach, RPE_LEFT, rangeText, fmtSet } from './coach.js';
 
 // After a set is checked off, a one-tap "how hard was that?" row opens under it
 let rpeAsk = null;   // { i, j }
+// How many sets this exercise is meant to get (the coach's plan, else the program's)
+function plannedSets(w, i) {
+  const e = w.ex[i];
+  const co = coach(w, i);
+  if (co) return co.sets;
+  return Number(e.ts) || Number(String(e.target || '').split('x')[0]) || 0;
+}
+// After a set is checked off, the next row appears by itself (its grey numbers come from the coach once you rate it)
+function addNextRow(w, i) {
+  const e = w.ex[i];
+  if (e.sets.some((s) => !s.done)) return;
+  const done = e.sets.filter((s) => s.done).length;
+  const co = coach(w, i);
+  const more = co ? (co.next && !co.enough && (done < co.sets || /one more set/.test(co.advice))) : done < plannedSets(w, i);
+  if (!more) return;
+  const last = e.sets[e.sets.length - 1] || { w: '', r: '' };
+  e.sets.push(co ? { w: '', r: '', done: false } : { w: last.w, r: last.r, done: false });
+}
 
 const firstNum = (s) => { const m = String(s || '').match(/\d+(\.\d+)?/); return m ? Number(m[0]) : ''; };
 
@@ -23,7 +41,7 @@ export function renderGym() {
   const todayDone = doneWorkouts().filter((w) => w.date === dayKey());
 
   const top = act
-    ? group('Workout in progress', `<p><b>${esc(act.name)}</b> - started ${fmtDuration(Date.now() - act.start)} ago</p>${btn('Resume workout', 'go-workout', { cls: 'primary wide' })}`)
+    ? group('Workout in progress', `<p><b>${esc(act.name)}</b> - started ${fmtLength(Date.now() - act.start)} ago</p>${btn('Resume workout', 'go-workout', { cls: 'primary wide' })}`)
     : group('Next up', `
         ${todayDone.length ? `<p class="ok-line">${icon('check', 16)} Already trained today: ${esc(todayDone.map((w) => w.name).join(', '))}</p>` : ''}
         ${next ? `<p class="next-name">${esc(next.name)}</p><p class="muted small">${next.items.map((i) => esc(getEx(i.ex).name)).join(' · ')}</p>
@@ -37,7 +55,7 @@ export function renderGym() {
 
   const histRows = hist.length ? hist.map((w) => `
     <button class="row" data-act="view-workout" data-id="${w.id}">
-      <span class="row-main"><span class="row-name">${esc(w.name)}</span><span class="row-sub">${esc(prettyDay(w.date))} · ${fmtDuration(w.end - w.start)} · ${w.ex.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0)} sets</span></span>
+      <span class="row-main"><span class="row-name">${esc(w.name)}</span><span class="row-sub">${esc(prettyDay(w.date))} · ${fmtLength(w.end - w.start)} · ${w.ex.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0)} sets</span></span>
       <span class="row-num">${fmt(volume(w))}<small> lb</small></span>
     </button>`).join('') : '<p class="empty">Finished workouts show up here.</p>';
 
@@ -112,7 +130,9 @@ export function renderWorkout() {
     const last = lastSetsFor(e.ex, w.id);
     const co = coach(w, i);
     const sug = co ? null : overload(ex, e, last);
-    const ghost = co && co.next && !co.enough ? co.next : null;
+    const lastDone = e.sets.reduce((a, s, j) => (s.done ? j : a), -1);
+    const rating = co && rpeAsk && rpeAsk.i === i && rpeAsk.j === lastDone && !e.sets[lastDone].rpe;
+    const ghost = co && co.next && !co.enough && !rating ? co.next : null;
     // SET | PREV (same set last time) | weight | reps | RPE | done. Fields start empty - you type what you did,
     // or tap the check to take the coach's grey suggestion.
     const rows = e.sets.map((s, j) => {
@@ -132,16 +152,17 @@ export function renderWorkout() {
         </div>
       </div>${asking ? rpePicker(i, j, s.rpe) : ''}`;
     }).join('');
-    const coachLine = co ? `<div class="coach-tip coach ${co.next && !co.enough ? 'up' : ''}">
-        <div class="co-top"><b>Aim ${co.sets} x ${rangeText(co)}</b> <span class="muted">@ RPE ${co.rpe} · ${RPE_LEFT[co.rpe]}</span>${co.setNo ? `<span class="co-set muted">set ${co.setNo}/${co.sets}</span>` : ''}</div>
-        ${co.next && !co.enough ? `<div>Next: <b class="vt">${esc(fmtSet(co.next, ex.type === 'body'))}</b>${co.next.why ? ` <span class="muted">· ${esc(co.next.why)}</span>` : ''}</div>` : ''}
-        ${co.advice ? `<div class="muted">${esc(co.advice)}</div>` : ''}
+    const coachLine = co ? `<div class="coach-tip coach ${co.next && !co.enough && !rating ? 'up' : ''}">
+        <div class="co-top"><b>Aim ${co.sets} x ${rangeText(co)}</b> <span class="muted">@ RPE ${co.rpe} (${co.rpe === 7 ? '3' : '2'} in the tank)</span>${co.setNo && !rating ? `<span class="co-set muted">set ${co.setNo}/${co.sets}</span>` : ''}</div>
+        ${rating ? `<div>Rate set ${lastDone + 1} below to get your next target.</div>`
+          : `${co.next && !co.enough ? `<div>Do: <b class="vt">${esc(fmtSet(co.next, ex.type === 'body'))}</b>${co.next.why ? ` <span class="muted">· ${esc(co.next.why)}</span>` : ''}</div>` : ''}
+        ${co.advice ? `<div class="muted">${esc(co.advice)}</div>` : ''}`}
       </div>` : '';
     return `<section class="group ex-block">
-      <div class="group-title"><button class="link" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button></div>
-      <div class="ex-meta">${e.target && !co ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last || co ? '' : '<span class="muted small">First time - start light, own the form</span>'}
+      <div class="ex-head"><button class="ex-name" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button>
         <button class="ex-more" data-act="ex-menu" data-i="${i}" aria-label="More for ${esc(ex.name)}">&middot;&middot;&middot;</button></div>
-      ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">next: ${esc(rk.next.label)}</span>` : ''}</button>` : ''}
+      ${(e.target && !co) || !(last || co) ? `<div class="ex-meta">${e.target && !co ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last || co ? '' : '<span class="muted small">First time - start light, own the form</span>'}</div>` : ''}
+      ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">· rank up at ${esc(rk.next.label)}</span>` : ''}</button>` : ''}
       ${coachLine}
       ${sug ? `<div class="coach-tip ${sug.up ? 'up' : ''}">${sug.up ? icon('up', 10) : ''} ${esc(sug.msg)}</div>` : ''}
       <div class="set set-head"><span class="set-n">Set</span><span>Prev</span><span>${l1}</span><span>${l2}</span><span>RPE</span><span></span></div>
@@ -151,7 +172,7 @@ export function renderWorkout() {
   }).join('');
 
   const doneSets = w.ex.reduce((a, e) => a + e.sets.filter((s) => s.done).length, 0);
-  const allSets = w.ex.reduce((a, e) => a + e.sets.length, 0);
+  const allSets = w.ex.reduce((a, e, i) => a + Math.max(e.sets.length, plannedSets(w, i)), 0);
   return win(esc(w.name), `
     <div class="wo-head panel sunken">
       <span>${icon('hourglass', 16)} <b class="vt" id="wo-clock">${fmtDuration(Date.now() - w.start)}</b></span>
@@ -185,7 +206,8 @@ on({
       if (s.r === '') { toast('Enter your reps first', 'warn'); inR.focus(); return; }
       s.done = true;
       buzz(HAPTIC.press);
-      rpeAsk = { i, j };
+      rpeAsk = coach(w, i) ? { i, j } : null;
+      addNextRow(w, i);
       if (S.settings.restAuto) startRest(getEx(e.ex).rest || 90);
     } else {
       s.done = false;
@@ -214,7 +236,9 @@ on({
     const s = w.ex[el.dataset.i] && w.ex[el.dataset.i].sets[el.dataset.j];
     if (!s) return;
     s.rpe = Number(el.dataset.v);
-    rpeAsk = null; save(); rerender();
+    rpeAsk = null;
+    addNextRow(w, Number(el.dataset.i));   // an easy last set can earn one more
+    save(); rerender();
   },
   'rpe-skip': () => { rpeAsk = null; rerender(); },
   'set-del': (el) => deleteSet(Number(el.dataset.i), Number(el.dataset.j)),
@@ -396,10 +420,13 @@ export function startRest(sec) {
   rest.timer = setInterval(tickRest, 250);
   tickRest();
 }
+// Away from the workout screen the bar would cover other pages, so the countdown moves onto the Gym tab instead
+const gymTabLabel = () => document.querySelector('.task[data-to="#/workout"] span, .task[data-to="#/gym"] span');
 function stopRest() {
   clearInterval(rest.timer); rest.end = 0;
   const el = document.getElementById('restbar'); if (el) el.classList.remove('show');
   document.body.classList.remove('resting');
+  const t = gymTabLabel(); if (t) { t.textContent = 'Gym'; t.parentElement.classList.remove('rest-count'); }
 }
 function tickRest() {
   const el = document.getElementById('restbar');
@@ -412,6 +439,14 @@ function tickRest() {
     toast('Rest over - next set!', 'dumbbell');
     return;
   }
+  const tab = gymTabLabel();
+  if (!/^#\/workout/.test(location.hash)) {
+    el.classList.remove('show');
+    document.body.classList.remove('resting');
+    if (tab) { tab.textContent = fmtDuration(left + 999); tab.parentElement.classList.add('rest-count'); }
+    return;
+  }
+  if (tab) { tab.textContent = 'Gym'; tab.parentElement.classList.remove('rest-count'); }
   el.classList.add('show');
   document.body.classList.add('resting');
   const pct = 100 - (left / (rest.total * 1000)) * 100;
@@ -468,7 +503,7 @@ function renderExPicker() {
   return win(xp.onPick ? 'Add Exercise' : 'Exercise Library', `
     <div class="search-row"><input id="xp-q" class="inp grow" type="search" placeholder="Search exercises..." value="${esc(xp.q)}" data-input="xp-q" autocomplete="off"></div>
     <div class="grid2">
-      ${select('cat', [['', 'All categories'], ...cats.map((c) => [c, c])], xp.cat, { data: 'data-change="xp-cat"' })}
+      ${select('cat', [['', 'All types'], ...cats.map((c) => [c, c])], xp.cat, { data: 'data-change="xp-cat"' })}
       ${select('mus', [['', 'All muscles'], ...Object.entries(MUSCLES).map(([k, m]) => [k, m.name])], xp.mus || '', { data: 'data-change="xp-mus"' })}
     </div>
     <div class="list" id="xp-list">${xpList()}</div>
@@ -561,7 +596,7 @@ function openWorkoutDetail(id) {
   const w = S.workouts.find((x) => x.id === id);
   if (!w) return;
   openModal(() => win(esc(w.name), `
-    <p class="muted">${esc(prettyDay(w.date))} · ${fmtDuration(w.end - w.start)} · ${fmt(volume(w))} lb</p>
+    <p class="muted">${esc(prettyDay(w.date))} · ${fmtLength(w.end - w.start)} · ${fmt(volume(w))} lb</p>
     ${w.ex.map((e) => `<div class="hist-line"><span>${esc(getEx(e.ex).name)}</span><span>${e.sets.map(setTxt).join(', ')}</span></div>`).join('')}
     ${w.notes ? `<p class="why">"${esc(w.notes)}"</p>` : ''}
     <div class="btn-row">${btn('Delete', 'wd-del', { cls: 'danger', data: `data-id="${w.id}"` })}${btn('Close', 'modal-close', { cls: 'grow' })}</div>

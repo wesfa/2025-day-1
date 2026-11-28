@@ -53,7 +53,7 @@ export function renderFood() {
     const rows = items.map((e) => `
       <button class="row" data-act="edit-entry" data-id="${e.id}">
         <span class="row-main"><span class="row-name">${esc(e.name)}</span>
-        <span class="row-sub">${e.serving === 'entry' ? '' : `${r1(e.qty)} × ${esc(e.serving)} · `}${macroLine(e, e.qty)}</span></span>
+        <span class="row-sub">${e.serving === 'entry' ? '' : `${e.qty === 1 ? '' : `${r1(e.qty)} × `}${esc(e.serving)} · `}${macroLine(e, e.qty)}</span></span>
         <span class="row-num">${fmt(e.cal * e.qty)}</span>
       </button>`).join('');
     return group(`${meal}`, `
@@ -82,8 +82,14 @@ export function renderFood() {
       ${microStrip(t, tg)}
     </div>
     ${meals}
-    <div class="btn-row">${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}${btn('Quick add calories', 'quick-add', { data: `data-meal="${mealForNow()}"` })}${btn('My foods', 'my-foods')}</div>
-    <div class="btn-row">${btn('Fast food mode', 'ff-open', { ico: 'burger', data: `data-meal="${mealForNow()}"` })}${btn('Grocery list', 'nav', { ico: 'cart', data: 'data-to="#/grocery"' })}</div>
+    ${group('Tools', `<div class="btn-grid">
+      ${btn('AI photo log', 'ai-open', { ico: 'camera', data: `data-meal="${mealForNow()}" data-date="${k}"` })}
+      ${btn('Quick add kcal', 'quick-add', { data: `data-meal="${mealForNow()}"` })}
+      ${btn('Fast food mode', 'ff-open', { ico: 'burger', data: `data-meal="${mealForNow()}"` })}
+      ${btn('Grocery list', 'nav', { ico: 'cart', data: 'data-to="#/grocery"' })}
+      ${btn('My foods', 'my-foods')}
+      ${btn('Weekly report', 'weekly', { ico: 'trophy' })}
+    </div>`)}
   `, { ico: 'burger' });
 }
 
@@ -123,6 +129,8 @@ export function openAddFood(meal, date) {
   af.date = date || dayKey();
   af.q = '';
   af.online = null;
+  af.added = new Set();   // foods logged with + while this list is open (shown with a check)
+  af.snap = null;         // the Recent order when the list opened, so rows don't jump as you add
   if (!af.tab || (af.tab === 'recent' && !S.recent.length)) af.tab = S.recent.length ? 'recent' : 'all';
   openModal(renderAddFood, { full: true });
 }
@@ -216,12 +224,14 @@ function searchLocal(q) {
   return { list: hits.slice(0, 60).map((x) => x.f), close };
 }
 
+// Tap the food to pick an amount; tap + to log one serving straight away (the list stays open for the next one)
 function foodRow(f) {
   const fav = S.favs.includes(f.id);
-  return `<button class="row" data-act="pick-food" data-fid="${esc(f.id)}">
-    <span class="row-main"><span class="row-name">${fav ? icon('star', 12) + ' ' : ''}${esc(f.name)}</span>
-    <span class="row-sub">${esc(f.serving)} · ${macroLine(f)}</span></span>
-    <span class="row-num">${fmt(f.cal)}</span></button>`;
+  return `<div class="row static food-row">
+    <button class="row-main link-row" data-act="pick-food" data-fid="${esc(f.id)}"><span class="row-name">${fav ? icon('star', 12) + ' ' : ''}${esc(f.name)}</span>
+    <span class="row-sub">${esc(f.serving)} · ${macroLine(f)}</span></button>
+    <span class="row-num">${fmt(f.cal)}</span>
+    <button class="btn sq quick-plus ${af.added && af.added.has(f.id) ? 'added' : ''}" data-act="af-plus" data-fid="${esc(f.id)}" aria-label="Add 1 serving of ${esc(f.name)}">${af.added && af.added.has(f.id) ? '✓' : '+'}</button></div>`;
 }
 
 const AF_TABS = [['recent', 'Recent'], ['favs', 'Favorites'], ['meals', 'Meals'], ['mine', 'My Foods'], ['all', 'All']];
@@ -232,7 +242,8 @@ function afList() {
     const { list: res, close } = searchLocal(af.q.trim());
     list = (res.length ? (close ? `<div class="sub-head">Close matches</div>` : '') + res.map(foodRow).join('') : '<p class="empty">No matches in your foods.</p>') + renderOnline();
   } else if (af.tab === 'recent') {
-    const r = recentFoods();
+    if (!af.snap) af.snap = recentFoods().map((f) => f.id);
+    const r = af.snap.map(getFood).filter(Boolean);
     list = r.length ? r.map(foodRow).join('') : '<p class="empty">Foods you log show up here so re-logging is one tap.</p>';
   } else if (af.tab === 'favs') {
     const f = S.favs.map(getFood).filter(Boolean);
@@ -266,7 +277,7 @@ function renderAddFood() {
     </div>
     <div id="af-tabs">${afTabs()}</div>
     <div class="tab-body list" id="af-list">${afList()}</div>
-    <div class="select-meal">Adding to: ${select('meal', MEALS.map((m) => [m, m]), af.meal, { data: 'data-change="af-meal"' })} <span class="muted">${esc(prettyDay(af.date))}</span></div>
+    <div class="select-meal">Adding to: ${select('meal', MEALS.map((m) => [m, m]), af.meal, { data: 'data-change="af-meal"' })} ${af.date !== dayKey() ? `<span class="muted">${esc(prettyDay(af.date))}</span>` : ''}</div>
   `, { ico: 'burger', cls: 'full-win', close: 'modal-close' });
 }
 
@@ -299,6 +310,15 @@ on({
   'af-tab': (el) => { af.tab = el.dataset.tab; refreshAfList(); },
   'af-cat': (el) => { af.cat = el.value; refreshAfList(); },
   'af-meal': (el) => { af.meal = el.value; drawModals(); },
+  'af-plus': (el) => {
+    const f = getFood(el.dataset.fid) || onlineMap[el.dataset.fid] || menuFood(el.dataset.fid);
+    if (!f) return;
+    addEntry(af.date, f, 1, af.meal);
+    buzz(HAPTIC.press);
+    toast(`Added ${f.name} to ${af.meal}`, 'check');
+    af.added.add(f.id);
+    rerender();   // updates the totals underneath; the list keeps its order
+  },
   'pick-food': (el) => {
     const f = getFood(el.dataset.fid) || onlineMap[el.dataset.fid] || menuFood(el.dataset.fid);
     if (f) openFoodDetail(f, { date: af.date, meal: af.meal });
@@ -346,8 +366,8 @@ function renderFoodDetail() {
   const qtyVal = fd.unit === 'g' ? r0(q * f.g) : r1(q);
   return win(esc(f.name), `
     <div class="fd-head">
-      <div><div class="fd-serv">1 serving = ${esc(f.serving)}</div>${f.cat ? `<div class="muted">${esc(f.cat)}</div>` : ''}</div>
-      <span class="fd-btns">${f.cat !== 'Fast Food' ? `<button class="btn sq" data-act="fd-grocery" aria-label="Add to grocery list">${icon('cart', 20)}</button>` : ''}${f.id ? `<button class="btn sq" data-act="fd-fav" aria-label="Favorite">${icon(fav ? 'star' : 'starOff', 20)}</button>` : ''}</span>
+      <div><div class="fd-serv">1 serving = ${esc(f.serving)}</div>${f.cat ? `<div class="muted small">Category: ${esc(f.cat)}</div>` : ''}</div>
+      <span class="fd-btns">${f.cat !== 'Fast Food' ? `<button class="btn fd-ico" data-act="fd-grocery" aria-label="Add to grocery list">${icon('cart', 18)}<small>List</small></button>` : ''}${f.id ? `<button class="btn fd-ico ${fav ? 'on' : ''}" data-act="fd-fav" aria-label="Favorite">${icon(fav ? 'star' : 'starOff', 18)}<small>${fav ? 'Fav' : 'Fav'}</small></button>` : ''}</span>
     </div>
     <div class="qty-row">
       <button class="btn sq big" data-act="fd-step" data-d="-1">-</button>
@@ -357,7 +377,7 @@ function renderFoodDetail() {
     </div>
     <div class="chips">${[0.5, 1, 1.5, 2, 3].map((v) => `<button class="btn chip ${q === v ? 'on' : ''}" data-act="fd-set" data-v="${v}">${v === 0.5 ? '1/2' : v === 1.5 ? '1 1/2' : v}</button>`).join('')}</div>
     <div class="panel sunken fd-macros" id="fd-macros">${fdMacros()}</div>
-    <p class="muted small">After this: ${fmt(t.cal + (fd.entry ? 0 : f.cal * q))} / ${fmt(tg.cal)} kcal · protein ${r0(t.p + (fd.entry ? 0 : f.p * q))} / ${tg.p}g</p>
+    <p class="muted small fd-after">After this: <span class="nw">${fmt(t.cal + (fd.entry ? 0 : f.cal * q))} / ${fmt(tg.cal)} kcal</span> · <span class="nw">protein ${r0(t.p + (fd.entry ? 0 : f.p * q))} / ${tg.p}g</span></p>
     ${field('Meal', select('meal', MEALS.map((m) => [m, m]), fd.meal, { data: 'data-change="fd-meal"' }))}
     <div class="btn-row">
       ${btn(fd.entry ? 'Save' : `Add to ${fd.meal}`, 'fd-add', { cls: 'primary grow' })}

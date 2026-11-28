@@ -84,6 +84,8 @@ function place(rem, dow, ranges, rule) {
   let moved = '';
   if (t < wake) { t = wake + 5; moved = 'after wake-up'; }
   if (t > sleep) { t = sleep - 15; moved = 'before bed'; }
+  // The lunch reminder rings during the school day: you eat (and can log) at your lunch period
+  if (rem.id === 'lunch') ranges = ranges.filter(([, , label]) => !/school|class/i.test(label || ''));
   // Re-check after each move in case blocks are back-to-back
   for (let guard = 0; guard < 6; guard++) {
     const block = ranges.find(([s, e]) => t >= s && t < e);

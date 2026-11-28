@@ -97,7 +97,7 @@ export function renderSettings() {
           ${field('Height', select('heightIn', heightOpts(), p.heightIn))}
           ${field('Start weight (lb)', numInput('startWeight', p.startWeight))}
           ${field('Goal weight (lb)', numInput('goalWeight', p.goalWeight))}
-          ${field('Pace (lb/week)', select('rate', [[0.25, '0.25 - slow & lean'], [0.5, '0.5 - recommended'], [0.75, '0.75'], [1, '1.0 - aggressive']], p.rate))}
+          ${field('Pace (lb/week)', select('rate', [[0.25, '0.25 (lean)'], [0.5, '0.5 (best)'], [0.75, '0.75'], [1, '1.0 (fast)']], p.rate))}
           ${field('Sex (for calorie math)', select('sex', [['m', 'Male'], ['f', 'Female']], p.sex))}
         </div>
         ${field('Training phase', select('phase', Object.entries(PHASES).map(([k, v]) => [k, v.label]), p.phase))}
@@ -408,7 +408,9 @@ export function renderReminders() {
       </ol>
       <p class="muted small">Real push notifications at the right times, no account needed. Reminder text (like "Log lunch") is sent through ntfy.sh - your food and weight data never leaves this phone.</p>`;
 
+  const pushOn = N.method === 'ntfy' && N.topic;
   return win('Reminders', `
+    ${pushOn ? '' : `<div class="alert soft push-banner">${icon('bell', 16)}<span><b>Reminders can't buzz your phone yet.</b> Set up phone alerts (2 minutes, free).</span>${btn('Set up', 'rem-goto-push', { cls: 'primary' })}</div>`}
     <p class="muted small">Tell Macros when you're at school or work. Reminders that land in those blocks get moved to right before or after, and nothing fires while you're asleep.</p>
     ${group('My week', `
       ${busyRows || '<p class="empty">No school/work blocks yet.</p>'}
@@ -418,13 +420,17 @@ export function renderReminders() {
         ${field('Bedtime', `<input class="inp" type="time" value="${sch.sleep}" data-change="sch-sleep">`)}
       </div>`)}
     ${group('Days off & trips', `
-      <p class="muted small">No school skips school blocks. Early dismissal ends school early. Out of town skips school and work and pauses weigh-in, gym and after-school fuel reminders (meal reminders keep going).</p>
+      <ul class="muted small kind-help">
+        <li><b>No school</b>: school blocks are skipped that day.</li>
+        <li><b>Early dismissal</b>: school ends at the time you set.</li>
+        <li><b>Out of town</b>: school and work are skipped; weigh-in, gym and after-school fuel reminders pause (meal reminders keep going).</li>
+      </ul>
       ${dateRows || '<p class="empty">No upcoming days off.</p>'}
       ${past ? `<p class="muted small">${past} past date${past > 1 ? 's' : ''} hidden.</p>` : ''}
       <div class="btn-row">${btn('+ Add dates', 'date-add')}${btn('Import schedule file', 'sched-import', { ico: 'floppy' })}</div>`)}
     ${group('Reminders', remRows + `<div class="btn-row">${btn('+ Custom reminder', 'rem-add')}${btn('Restore defaults', 'rem-reset')}</div>`)}
     ${group('Next 7 days', `<p class="muted small">Gray = busy. <span class="moved-key">Highlighted</span> = moved to fit around school/work.</p>${grid}`)}
-    ${group('Phone alerts (push notifications)', push)}
+    <div id="push-setup">${group('Phone alerts (push notifications)', push)}</div>
     ${group('Calendar alerts (backup option)', `
       <p class="muted small">Adds repeating events with alerts to your phone's calendar. Works with no extra app, but it only knows your normal week - not days off or trips (phone alerts do). Re-download if your schedule changes (delete the old "Macros" events first).</p>
       ${btn('Download calendar file', 'ics-download', { ico: 'calendar' })}`)}
@@ -521,6 +527,7 @@ function schedChanged() {
 }
 
 on({
+  'rem-goto-push': () => { const el = document.getElementById('push-setup'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
   'busy-add': () => openBusy(null),
   'busy-edit': (el) => openBusy(S.schedule.busy.find((b) => b.id === el.dataset.id)),
   'busy-save': (el) => {

@@ -119,7 +119,7 @@ export function renderGrocery() {
         <span class="row-sub"><b class="sg-qty">${esc(x.qty)}</b>${x.why ? ` · ${esc(x.why)}` : ''}</span>
         ${store === 'wegmans' && it.a && it.a !== it.w ? `<span class="row-sub sg-alt">Aldi: ${esc(it.a)}</span>` : ''}
       </button>
-      <button class="btn sq" data-act="sg-hide" data-id="${x.id}" aria-label="Take off the list">${icon('close', 8)}</button>
+      <button class="btn sq sg-x" data-act="sg-hide" data-id="${x.id}" aria-label="Take off the list">${icon('close', 8)}</button>
     </div>`;
   };
   const smart = SECTIONS.map((sec) => {
