@@ -38,6 +38,19 @@ export function weightStats() {
   return { entries, start, goal, now, rate, toGo, dir, progress, eta, latest: latestWeight() };
 }
 
+// Is the scale moving at the planned speed? One answer used by the Weight page, the weekly report and the grocery
+// list, so they never give opposite advice. null = not enough weigh-ins yet.
+export function paceStatus() {
+  const st = weightStats();
+  if (st.rate == null) return null;
+  const plan = (S.profile.rate || 0.5) * st.dir;
+  const r = st.rate;
+  if (Math.abs(st.toGo) <= 1) return { status: 'goal', rate: r, plan };
+  const fast = st.dir > 0 ? r > Math.max(plan * 1.8, plan + 0.5) : r < Math.min(plan * 1.8, plan - 0.5);
+  const slow = st.dir > 0 ? r < plan * 0.6 : r > plan * 0.6;
+  return { status: fast ? 'fast' : slow ? 'slow' : 'ok', rate: r, plan };
+}
+
 export function renderWeight() {
   const st = weightStats();
   const k = wv.date;
@@ -49,8 +62,9 @@ export function renderWeight() {
   let paceMsg = 'Log at least 3 weigh-ins to see your trend.';
   if (st.rate != null) {
     const r = st.rate;
-    const onPace = st.dir > 0 ? r >= plan * 0.6 : r <= plan * 0.6;
-    const tooFast = st.dir > 0 ? r > Math.max(plan * 1.8, plan + 0.5) : r < Math.min(plan * 1.8, plan - 0.5);
+    const pc = paceStatus();
+    const onPace = pc.status === 'ok';
+    const tooFast = pc.status === 'fast';
     const tg = targets();
     paceMsg = `Trend: <b>${r > 0 ? '+' : ''}${r1(r)} lb/week</b> (plan ${plan > 0 ? '+' : ''}${r1(plan)}). `;
     if (Math.abs(st.toGo) <= 1) paceMsg += 'You\'re at your goal - eat at maintenance.';
@@ -71,6 +85,7 @@ export function renderWeight() {
         <input id="w-in" class="inp big-num" type="number" inputmode="decimal" step="0.1" placeholder="${st.latest ?? S.profile.startWeight}" value="${logged ?? ''}">
         <span class="unit">lb</span>
         ${btn(logged != null ? 'Update' : 'Save', 'w-save', { cls: 'primary', type: 'submit' })}
+        ${logged != null ? btn('Delete', 'w-del', { cls: 'danger', data: `data-k="${k}"` }) : ''}
       </form>
       <p class="muted small">Same time daily: right after you wake up + bathroom, before food or water.</p>`)}
 
@@ -92,10 +107,10 @@ export function renderWeight() {
 
     ${measureGroup()}
 
-    ${group('Recent', recent.length ? recent.map(([kk, v], i) => {
+    ${group('Recent - tap one to fix it', recent.length ? recent.map(([kk, v], i) => {
       const prev = recent[i + 1];
       const d = prev ? v - prev[1] : 0;
-      return `<div class="row static"><span class="row-main"><span class="row-name">${esc(prettyDay(kk))}</span></span><span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${prev ? (d > 0 ? '+' : '') + r1(d) : ''}</span><span class="row-num">${r1(v)}</span><button class="btn sq" data-act="w-del" data-k="${kk}" aria-label="Delete">${icon('close', 8)}</button></div>`;
+      return `<button class="row" data-act="w-pick" data-k="${kk}" aria-label="Edit ${esc(prettyDay(kk))}"><span class="row-main"><span class="row-name">${esc(prettyDay(kk))}</span></span><span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${prev ? (d > 0 ? '+' : '') + r1(d) : ''}</span><span class="row-num">${r1(v)}</span></button>`;
     }).join('') : '<p class="empty">No weigh-ins yet.</p>')}
   `, { ico: 'scale' });
 }
@@ -107,6 +122,8 @@ on({
   },
   'w-day': (el) => { const n = addDays(wv.date, Number(el.dataset.d)); if (n <= dayKey()) { wv.date = n; rerender(); } },
   'w-range': (el) => { wv.range = Number(el.dataset.r); rerender(); },
+  // tap a weigh-in in the list to fix or delete it up top
+  'w-pick': (el) => { wv.date = el.dataset.k; rerender(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
   'w-del': async (el) => {
     if (!(await confirmBox(`Delete weigh-in for ${esc(prettyDay(el.dataset.k))}?`))) return;
     delete S.weights[el.dataset.k]; save(); rerender();

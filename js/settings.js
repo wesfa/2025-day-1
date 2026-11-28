@@ -391,7 +391,7 @@ export function renderReminders() {
     const busy = busyOn(key);
     return `<div class="wg-day ${i === 0 ? 'today' : ''}"><div class="wg-h">${DOW[parseDay(key).getDay()]} ${shortDate(key)}</div>
       ${rule ? `<div class="wg-rule kind-${rule.kind}">${esc(rule.label)}</div>` : ''}
-      ${busy.map(([s, e, l]) => `<div class="wg-busy">${esc(l)}<br>${fmtTime(toHHMM(s))}-${fmtTime(toHHMM(e))}</div>`).join('')}
+      ${busy.map(([s, e, l]) => `<div class="wg-busy">${esc(l)} ${fmtTime(toHHMM(s))}-${fmtTime(toHHMM(e))}</div>`).join('')}
       ${plan.map((it) => `<div class="wg-item ${it.moved ? 'moved' : ''}"><b>${fmtTime(it.time)}</b> ${esc(it.labels.join(' + '))}</div>`).join('') || '<div class="muted small">-</div>'}
     </div>`;
   }).join('')}</div>`;

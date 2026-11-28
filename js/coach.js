@@ -148,6 +148,7 @@ export function coach(w, i) {
     else if (nx.held) why = `${rated} was easy: more reps (${nx.held} would drop you under ${lo})`;
     else if (nx.r < num(s.r)) why = rpe >= 9.5 ? `${rated} was all-out: ${nx.r} reps keeps 2 in the tank` : isBody ? 'A rep or so drops as you tire' : 'Same weight: a rep or so drops as you tire';
     else if (nx.r > num(s.r)) why = rpe && rpe <= 7 ? `${rated} felt easy: go for ${nx.r}` : 'You had more in you: one more rep';
+    if (ex.cat === 'Power' && isBody) why = 'Every rep explosive - stop if they slow down';
     out.next = { w: nx.w, r: nx.r, why };
     if (num(s.rpe) >= 10 && num(s.r) < lo) out.advice = 'That was a grind under your rep range - the next set is lighter.';
     else if (done.length >= sets) {
@@ -180,10 +181,11 @@ export function coach(w, i) {
   const lastTxt = `${fmtSet(best.s, isBody)}${num(best.s.rpe) ? ` @${best.s.rpe}` : ''}`;
   let why;
   if (dw > 0) why = `Last time ${lastTxt}: up ${dw} lb`;
-  else if (dw < 0) why = `Last time ${lastTxt}: a bit lighter today`;
+  else if (dw < 0) why = nx.r > num(best.s.r) ? `Last time ${lastTxt}: lighter, more reps (${lo}-${hi} range)` : `Last time ${lastTxt}: a bit lighter today`;
   else if (nx.r > num(best.s.r)) why = `Last time ${lastTxt}: +${nx.r - num(best.s.r)} rep${nx.r - num(best.s.r) > 1 ? 's' : ''}${nx.held ? ` (${nx.held} is too big a jump yet)` : ''}`;
-  else why = `Last time ${lastTxt}: match it`;
+  else why = `Last time ${lastTxt} - same again`;
   if (short) why += ' · short sleep, 3% easier';
+  if (ex.cat === 'Power' && isBody) why = 'Every rep explosive - stop if they slow down';
   out.next = { w: nx.w, r: nx.r, why };
   out.setNo = 1;
   return out;

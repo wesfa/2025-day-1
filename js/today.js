@@ -81,7 +81,7 @@ export function renderToday() {
   if (act) train = `<p><b>${esc(act.name)}</b> is in progress.</p>${btn('Resume workout', 'go-workout', { cls: 'primary wide', ico: 'dumbbell' })}`;
   else if (doneToday.length) train = `<p class="ok-line">${icon('check', 16)} Done: ${esc(doneToday.map((w) => w.name).join(', '))}</p><p class="muted small">Recovery = protein + carbs + sleep. Get 8+ hours.</p>`;
   else if (next) train = `<p class="next-name">${esc(next.name)}</p><p class="muted small">${next.items.slice(0, 4).map((i) => esc(getEx(i.ex).name)).join(' · ')}${next.items.length > 4 ? ' ...' : ''}</p>
-      <div class="btn-row">${btn('Start', 'start-tpl', { cls: 'primary grow', data: `data-id="${next.id}"`, ico: 'dumbbell' })}${tg.dayType === 'rest' ? '' : btn('Rest day', 'day-set', { data: 'data-type="rest"' })}</div>
+      <div class="btn-row">${btn('Start', 'start-tpl', { cls: 'primary grow', data: `data-id="${next.id}"`, ico: 'dumbbell' })}</div>
       ${tg.dayType === 'rest' ? '<p class="muted small">Rest day - recover, stretch, and still hit your protein.</p>' : ''}`;
   else train = btn('Open gym', 'nav', { data: 'data-to="#/gym"' });
 
@@ -112,7 +112,7 @@ export function renderToday() {
     ${due.length ? `<div class="alert soft">${icon('bell', 16)} <span>${due.map((r) => esc(r.label)).join(' · ')}</span></div>` : ''}
     ${tg.dayType ? `<div class="day-type">
       <span class="tag dt-${tg.dayType}">${tg.dayType === 'train' ? 'Training day' : 'Rest day'}</span>
-      <span class="muted small">${tg.dayDelta > 0 ? '+' : ''}${fmt(tg.dayDelta)} kcal</span>
+      <span class="muted small">${tg.dayDelta > 0 ? '+' : ''}${fmt(tg.dayDelta)} kcal vs avg day</span>
       ${doneToday.length || act ? '' : btn(tg.dayType === 'train' ? 'Rest today' : 'Training today', 'day-set', { cls: 'chip', data: `data-type="${tg.dayType === 'train' ? 'rest' : 'train'}"` })}
     </div>` : ''}
     <div class="cal-box panel sunken">
@@ -137,7 +137,7 @@ export function renderToday() {
 
   ${win('Log Food', `
     ${btn('Snap a photo - AI logs it', 'ai-open', { cls: 'primary wide ai-cta', ico: 'camera', data: `data-meal="${mealForNow()}"` })}
-    <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}"><span>${m}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
+    <div class="meal-btns">${MEALS.map((m) => `<button class="btn meal-btn ${m === mealForNow() ? 'now' : ''}" data-act="open-add" data-meal="${m}"><span>${m}${m === mealForNow() ? '<em class="mb-next">next</em>' : ''}</span><small>${fmt(d.food.filter((e) => e.meal === m).reduce((a, e) => a + e.cal * e.qty, 0))} kcal</small></button>`).join('')}</div>
     ${sug.length ? `<div class="sub-head">Coach says: ${left.p > 20 ? `you need <b class="c-p">${r0(left.p)}g protein</b>` : `<b>${fmt(left.cal)} kcal</b> left`}. Try:</div>
       <div class="sug-list">${sug.map((f) => `<button class="sug" data-act="sug-add" data-fid="${esc(f.id)}"><span>${esc(f.name)}</span><small>${esc(f.serving)} · ${fmt(f.cal)} kcal · <span class="c-p">${r0(f.p)}g P</span></small><b>+</b></button>`).join('')}</div>` : ''}
     ${left.cal < -300 && tg.dir < 0 ? '<p class="muted small">Over today. No stress - one day doesn\'t matter, the weekly average does.</p>' : ''}

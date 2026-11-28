@@ -28,12 +28,17 @@ import { allMenuFoods, menuFood } from './fastfood.js';
 
 export const view = { date: dayKey() };
 
+// The meal you're most likely about to log: the one for this time of day, or the next empty one if it's logged
+// (1 PM with lunch already in -> Dinner). Used everywhere a meal is preselected, so they all agree.
 export function mealForNow() {
   const h = new Date().getHours() + new Date().getMinutes() / 60;
-  if (h < 10.5) return 'Breakfast';
-  if (h < 14) return 'Lunch';
-  if (h >= 17 && h < 21) return 'Dinner';
-  return 'Snacks';
+  const byClock = h < 10.5 ? 'Breakfast' : h < 14 ? 'Lunch' : h >= 17 && h < 21 ? 'Dinner' : 'Snacks';
+  if (byClock === 'Snacks') return byClock;
+  const d = peekDay(dayKey());
+  const has = (m) => d.food.some((e) => e.meal === m);
+  if (!has(byClock)) return byClock;
+  const order = ['Breakfast', 'Lunch', 'Dinner'];
+  return order.slice(order.indexOf(byClock) + 1).find((m) => !has(m)) || 'Snacks';
 }
 
 const macroLine = (o, q = 1) => `<span class="mac"><span class="c-p">P ${r0(o.p * q)}</span> · <span class="c-c">C ${r0(o.c * q)}</span> · <span class="c-f">F ${r0(o.f * q)}</span></span>`;

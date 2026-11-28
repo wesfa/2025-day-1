@@ -4,7 +4,7 @@ import { S, getEx, currentWeight, allExercises } from './store.js';
 import { TIERS, exerciseRanks, overallRank, boundaries, rankOf, scoreOf, muscleVolume, isRanked, metaFor, nextTarget } from './strength.js';
 import { bodySvg, radarSvg, HEAT, heatOf } from './bodymap.js';
 import { MUSCLES, EQUIPMENT } from './exlib.js';
-import { esc, r0, fmt, prettyDay, parseDay } from './util.js';
+import { esc, r0, fmt, prettyDay, parseDay, nwPairs } from './util.js';
 import { win, group, btn, on, openModal, drawModals, rerender } from './ui.js';
 
 const TAB_KEY = 'macros:ranks-tab';
@@ -91,7 +91,7 @@ function rankRow(x) {
       <span class="row-name">${esc(ex.name)}</span>
       <span class="row-sub">Best ${esc(setTxt(x.exId, x.best))}${ex.type === 'body' ? '' : ` · max ~${esc(maxTxt(x.exId, x.best.m))}`}</span>
       <span class="rk-bar"><i style="width:${Math.round(rk.divFrac * 100)}%;background:${rk.color}"></i></span>
-      ${x.next ? `<span class="row-sub">${rk.tier === 6 ? esc(x.next.label) : `Next <b style="color:${x.next.rank.color}">${esc(x.next.rank.name)}</b>: ${esc(x.next.label)}`}</span>` : ''}
+      ${x.next ? `<span class="row-sub">${rk.tier === 6 ? esc(x.next.label) : `Next <b style="color:${x.next.rank.color}">${esc(x.next.rank.name)}</b>: ${nwPairs(x.next.label)}`}</span>` : ''}
     </span>
     <span class="rk-tag" style="color:${rk.color}">${esc(rk.name)}</span>
   </button>`;

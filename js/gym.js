@@ -2,7 +2,7 @@
 import { S, save, getEx, allExercises, activeWorkout, doneWorkouts, lastSetsFor, nextTemplate } from './store.js';
 import { EX_CATS, SET_LABELS, DEFAULT_TEMPLATES } from './program.js';
 import { e1rm, platesFor } from './calc.js';
-import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, fmtLength, buzz, HAPTIC } from './util.js';
+import { dayKey, prettyDay, esc, r0, num, fmt, uid, fmtDuration, fmtLength, nwPairs, buzz, HAPTIC } from './util.js';
 import { win, group, btn, field, select, on, actions, openModal, closeModal, closeAllModals, rerender, drawModals, toast, confirmBox, msgBox, beep, unlockAudio, formData, go } from './ui.js';
 import { icon } from './icons.js';
 import { MUSCLES, EQUIPMENT, EX_META } from './exlib.js';
@@ -127,6 +127,8 @@ export function renderWorkout() {
     const rk = ranks[e.ex];
     let [l1, l2] = SET_LABELS[ex.type] || SET_LABELS.weight;
     if (ex.type === 'weight' && EX_META[e.ex] && EX_META[e.ex].db) l1 = 'lb each';   // weight of ONE dumbbell
+    const noLoad = ex.type === 'body' && ex.cat === 'Power';   // jumps: no added weight
+    if (noLoad) l1 = '';
     const last = lastSetsFor(e.ex, w.id);
     const co = coach(w, i);
     const sug = co ? null : overload(ex, e, last);
@@ -145,7 +147,7 @@ export function renderWorkout() {
         <div class="set ${s.done ? 'done' : ''}">
           <span class="set-n">${j + 1}</span>
           <span class="set-prev">${esc(prev)}</span>
-          <input class="inp" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" ${ph && ph.w !== '' ? `placeholder="${esc(ph.w)}"` : ''} data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1}">
+          <input class="inp ${noLoad ? 'no-load' : ''}" type="number" inputmode="decimal" step="any" value="${esc(s.w)}" ${ph && ph.w !== '' ? `placeholder="${esc(ph.w)}"` : ''} data-change="set-val" data-i="${i}" data-j="${j}" data-k="w" aria-label="${l1 || 'added weight'}" ${noLoad ? 'tabindex="-1" aria-hidden="true"' : ''}>
           <input class="inp" type="number" inputmode="numeric" step="any" value="${esc(s.r)}" ${ph ? `placeholder="${esc(ph.r)}"` : ''} data-change="set-val" data-i="${i}" data-j="${j}" data-k="r" aria-label="${l2}">
           ${s.done ? `<button class="rpe-cell ${s.rpe ? 'on' : ''}" data-act="rpe-ask" data-i="${i}" data-j="${j}" aria-label="How hard (RPE)">${s.rpe ? esc(s.rpe) : '?'}</button>` : '<span class="rpe-cell off"></span>'}
           <button class="chk ${s.done ? 'on' : ''}" data-act="set-done" data-i="${i}" data-j="${j}" aria-label="${s.done ? 'Done - tap to undo' : 'Mark done'}">${icon('check', 16)}</button>
@@ -155,14 +157,14 @@ export function renderWorkout() {
     const coachLine = co ? `<div class="coach-tip coach ${co.next && !co.enough && !rating ? 'up' : ''}">
         <div class="co-top"><b>Aim ${co.sets} x ${rangeText(co)}</b> <span class="muted">@ RPE ${co.rpe} (${co.rpe === 7 ? '3' : '2'} in the tank)</span>${co.setNo && !rating ? `<span class="co-set muted">set ${co.setNo}/${co.sets}</span>` : ''}</div>
         ${rating ? `<div>Rate set ${lastDone + 1} below to get your next target.</div>`
-          : `${co.next && !co.enough ? `<div>Do: <b class="vt">${esc(fmtSet(co.next, ex.type === 'body'))}</b>${co.next.why ? ` <span class="muted">· ${esc(co.next.why)}</span>` : ''}</div>` : ''}
+          : `${co.next && !co.enough ? `<div>Do: <b class="vt">${esc(fmtSet(co.next, ex.type === 'body'))}</b></div>${co.next.why ? `<div class="co-why muted">${esc(co.next.why)}</div>` : ''}` : ''}
         ${co.advice ? `<div class="muted">${esc(co.advice)}</div>` : ''}`}
       </div>` : '';
     return `<section class="group ex-block">
       <div class="ex-head"><button class="ex-name" data-act="ex-info" data-id="${e.ex}">${esc(ex.name)}</button>
         <button class="ex-more" data-act="ex-menu" data-i="${i}" aria-label="More for ${esc(ex.name)}">&middot;&middot;&middot;</button></div>
       ${(e.target && !co) || !(last || co) ? `<div class="ex-meta">${e.target && !co ? `<span class="tag">Goal ${esc(e.target)}</span>` : ''}${last || co ? '' : '<span class="muted small">First time - start light, own the form</span>'}</div>` : ''}
-      ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">· rank up at ${esc(rk.next.label)}</span>` : ''}</button>` : ''}
+      ${rk ? `<button class="wo-rank" data-act="rk-open" data-id="${esc(e.ex)}">${badge(rk.rank, 20)}<b style="color:${rk.rank.color}">${esc(rk.rank.name)}</b>${rk.next && rk.rank.tier < 6 ? `<span class="muted">· rank up at ${nwPairs(rk.next.label)}</span>` : ''}</button>` : ''}
       ${coachLine}
       ${sug ? `<div class="coach-tip ${sug.up ? 'up' : ''}">${sug.up ? icon('up', 10) : ''} ${esc(sug.msg)}</div>` : ''}
       <div class="set set-head"><span class="set-n">Set</span><span>Prev</span><span>${l1}</span><span>${l2}</span><span>RPE</span><span></span></div>

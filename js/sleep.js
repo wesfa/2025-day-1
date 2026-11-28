@@ -140,7 +140,6 @@ export function renderSleep() {
       <button class="row-main link-row" data-act="sl-edit" data-k="${k}"><span class="row-name">${esc(prettyDay(k))}</span>
         <span class="row-sub">${fmtTime(n.bed)} - ${fmtTime(n.wake)}${n.q ? ` · ${QUALITY[n.q]}` : ''}</span></button>
       <span class="row-num">${hm(nightMins(n))}</span>
-      <button class="btn sq" data-act="sl-del" data-k="${k}" aria-label="Delete">${icon('close', 8)}</button>
     </div>`;
   }).join('');
   const remRows = SLEEP_REMS.map((id) => S.reminders.find((r) => r.id === id)).filter(Boolean).map((r) => {
@@ -163,7 +162,7 @@ export function renderSleep() {
       <div class="stat sunken"><span>Bedtime spread</span><b class="vt">${st.spread != null ? `±${Math.round(st.spread)}m` : '-'}</b></div>
     </div>
     ${group('Last 14 nights', `${chart()}
-      <div class="sl-key"><span><i class="ok"></i>hit your goal</span><span><i></i>a bit short</span><span><i class="low"></i>2h+ short</span><span><i class="none"></i>not logged</span><span><i class="goal"></i>${goalH()}h goal</span></div>
+      <div class="sl-key"><span><i class="ok"></i>hit your goal</span><span><i></i>under goal</span><span><i class="low"></i>2h+ short</span><span><i class="none"></i>not logged</span><span><i class="goal"></i>${goalH()}h goal</span></div>
       ${st.usualBed ? `<p class="muted small">Usual bedtime ${fmtTime(st.usualBed)}.</p>` : ''}`)}
     ${group('Your bedtime', `
       ${field('Sleep goal', select('goal', [[8, '8 hours'], [8.5, '8.5 hours'], [9, '9 hours - teen athletes'], [9.5, '9.5 hours'], [10, '10 hours']], goalH(), { data: 'data-change="sl-goal"' }))}
@@ -197,7 +196,7 @@ function chart() {
     const night = S.sleep.log[k];
     const m = night ? nightMins(night) : 0;
     const x = i * bw + bw * 0.18;
-    if (m) bars += `<rect class="sl-bar ${m >= goal - 20 ? 'ok' : m < goal - 120 ? 'low' : ''}" x="${x.toFixed(1)}" y="${y(m).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${(base - y(m)).toFixed(1)}"/>`;
+    if (m) bars += `<rect class="sl-bar ${m >= goal - 10 ? 'ok' : m < goal - 120 ? 'low' : ''}" x="${x.toFixed(1)}" y="${y(m).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${(base - y(m)).toFixed(1)}"/>`;
     else bars += `<rect class="sl-none" x="${x.toFixed(1)}" y="${base - 2}" width="${(bw * 0.64).toFixed(1)}" height="2"/>`;
     bars += `<text class="sl-day" x="${(i * bw + bw / 2).toFixed(1)}" y="${base + 13}" text-anchor="middle">${DOW1[parseDay(k).getDay()]}</text>`;
   }
@@ -218,7 +217,7 @@ function openNight(key) {
         ${field('Woke up', `<input class="inp" type="time" name="wake" value="${esc(n.wake || S.schedule.wake || '06:00')}">`)}
       </div>
       ${field('How was it?', select('q', [[0, '-'], ...[1, 2, 3, 4, 5].map((q) => [q, QUALITY[q]])], n.q || 0))}
-      <div class="btn-row">${btn('Save', 'sl-f-save', { cls: 'primary grow', type: 'submit', data: `data-old="${key || ''}"` })}${btn('Cancel', 'modal-close')}</div>
+      <div class="btn-row">${btn('Save', 'sl-f-save', { cls: 'primary grow', type: 'submit', data: `data-old="${key || ''}"` })}${key ? btn('Delete', 'sl-del', { cls: 'danger', data: `data-k="${key}"` }) : ''}${btn('Cancel', 'modal-close')}</div>
     </form>`, { cls: 'dialog', close: 'modal-close', ico: 'moon' }));
 }
 
@@ -279,6 +278,6 @@ on({
   },
   'sl-del': async (el) => {
     if (!(await confirmBox(`Delete the night ending ${esc(prettyDay(el.dataset.k))}?`))) return;
-    delete S.sleep.log[el.dataset.k]; save(); rerender();
+    delete S.sleep.log[el.dataset.k]; save(); closeModal(); rerender();
   },
 });

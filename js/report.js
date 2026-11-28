@@ -3,6 +3,7 @@ import { S, totals, targets, peekDay, doneWorkouts, weightEntries } from './stor
 import { dayKey, addDays, parseDay, DOW1, r0, r1, fmt, esc } from './util.js';
 import { win, group, btn, on, openModal } from './ui.js';
 import { icon } from './icons.js';
+import { paceStatus } from './weight.js';
 
 export function weekStats(endKey = dayKey()) {
   const tg = targets();
@@ -42,7 +43,14 @@ function verdict(w) {
   const dir = w.tg.dir;
   if (w.loggedDays < 5) tips.push('Log every day - you can\'t fix what you don\'t track. Use Recent + Saved Meals to make it 10 seconds.');
   if (w.proteinHits < Math.min(5, w.loggedDays)) tips.push(`Protein is the #1 lever. Add a shake or Greek yogurt to hit ${w.tg.p}g.`);
-  if (dir > 0 && w.avgCal < w.tg.cal * 0.9 && w.loggedDays) tips.push(`You're averaging ${fmt(w.avgCal)} kcal vs your goals' average of ${fmt(w.tg.cal)}. To gain, add a 4th meal: PB&J + whole milk is ~540 kcal.`);
+  // the scale has the final say: under your calorie goal is fine if you're still gaining on pace
+  const pc = paceStatus();
+  const pace = pc ? `${pc.rate > 0 ? '+' : ''}${r1(pc.rate)} lb/week (plan ${pc.plan > 0 ? '+' : ''}${r1(pc.plan)})` : '';
+  if (dir > 0 && pc && pc.status === 'fast') tips.push(`You're gaining ${pace}, faster than planned. Don't add food - trim ~250 kcal a day, sweets and drinks first.`);
+  else if (dir > 0 && w.avgCal < w.tg.cal * 0.9 && w.loggedDays) {
+    if (pc && pc.status === 'ok') tips.push(`You're under your calorie goal (${fmt(w.avgCal)} vs ${fmt(w.tg.cal)}), but the scale is right on pace at ${pace}. No change needed.`);
+    else tips.push(`You're averaging ${fmt(w.avgCal)} kcal vs your average goal (${fmt(w.tg.cal)}) and the scale is slow. Add a 4th meal: PB&J + whole milk is ~540 kcal.`);
+  }
   if (dir < 0 && w.avgCal > w.tg.cal * 1.1 && w.loggedDays) tips.push('Running over on calories. Swap soda/sweet tea for water and keep protein high.');
   if (w.lifts < 3) tips.push('Aim for 3-4 lifts a week. Linemen are built in the weight room.');
   if (w.weighIns < 5) tips.push('Weigh in daily - the 7-day average is what matters, and it needs data.');

@@ -77,9 +77,16 @@ const pct = (a, b) => (b > 0 ? a / b : 0);
 function reviewRows(rv) {
   const a = rv.avg; const g = rv.goal;
   const lvl = (good, ok) => (good ? 'good' : ok ? 'ok' : 'bad');
+  // calories are judged with the scale: under the goal is fine while the weight is on pace
+  let calLvl = lvl(Math.abs(pct(a.cal, g.cal) - 1) <= 0.1, Math.abs(pct(a.cal, g.cal) - 1) <= 0.2);
+  let calNote = '';
+  if (rv.pace && a.cal < g.cal * 0.9) {
+    if (rv.pace.status === 'ok' || rv.pace.status === 'goal') { calLvl = 'good'; calNote = ' · weight on pace'; }
+    else if (rv.pace.status === 'fast') { calLvl = 'ok'; calNote = ' · still gaining fast'; }
+  }
   const rows = [
     ['Protein', `${r0(a.p)} / ${r0(g.p)} g a day`, lvl(pct(a.p, g.p) >= 0.9, pct(a.p, g.p) >= 0.75)],
-    ['Calories', `${fmt(a.cal)} / ${fmt(g.cal)} a day`, lvl(Math.abs(pct(a.cal, g.cal) - 1) <= 0.1, Math.abs(pct(a.cal, g.cal) - 1) <= 0.2)],
+    ['Calories', `${fmt(a.cal)} / ${fmt(g.cal)} a day${calNote}`, calLvl],
     ['Sodium', `${fmt(a.na)} mg a day (max ${fmt(g.na)})`, lvl(a.na <= g.na, a.na <= g.na * 1.25)],
     ['Fiber', `${r0(a.fib)} / ${r0(g.fib)} g a day`, lvl(pct(a.fib, g.fib) >= 0.8, pct(a.fib, g.fib) >= 0.6)],
     ['Potassium', `${fmt(a.pot)} / ${fmt(g.pot)} mg a day`, lvl(pct(a.pot, g.pot) >= 0.8, pct(a.pot, g.pot) >= 0.6)],
@@ -88,6 +95,24 @@ function reviewRows(rv) {
   ];
   return `<ul class="bq-list">${rows.map(([l, v, c]) => `<li class="bq-${c}"><span class="bq-dot"></span><b>${l}</b> ${esc(v)}</li>`).join('')}</ul>`;
 }
+
+async function copyItem(id) {
+  const it = CAT_BY_ID[id]; if (!it) return;
+  const x = currentPlan().items.find((y) => y.id === it.id);
+  const text = `${descFor(it, storeOf())}${x ? ` - ${x.qty}` : ''}`;
+  if (await copyText(text)) { buzz(HAPTIC.press); toast(`Copied: ${it.name}`, 'check'); } else toast('Could not copy on this phone', 'warn');
+}
+// Press and hold an item for half a second to copy its name
+let holdT = null; let held = null; let holdXY = null;
+document.addEventListener('pointerdown', (e) => {
+  const m = e.target.closest && e.target.closest('.sg-main');
+  if (!m) return;
+  holdXY = [e.clientX, e.clientY]; held = null; clearTimeout(holdT);
+  holdT = setTimeout(() => { held = m.dataset.id; copyItem(held); }, 500);
+});
+['pointerup', 'pointercancel'].forEach((ev) => document.addEventListener(ev, () => clearTimeout(holdT)));
+document.addEventListener('pointermove', (e) => { if (holdXY && Math.hypot(e.clientX - holdXY[0], e.clientY - holdXY[1]) > 10) clearTimeout(holdT); });
+document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('.sg-main')) e.preventDefault(); });
 
 function currentPlan() {
   let plan = S.grocerySmart;
@@ -114,10 +139,9 @@ export function renderGrocery() {
     const done = !!plan.got[x.id];
     return `<div class="row static sg-row ${done ? 'done' : ''}">
       <label class="check inline"><input type="checkbox" data-change="sg-got" data-id="${x.id}" ${done ? 'checked' : ''}><span class="sr">In the cart</span></label>
-      <button class="row-main link-row" data-act="sg-copy" data-id="${x.id}" aria-label="Copy ${esc(descFor(it, store))}">
+      <button class="row-main link-row sg-main" data-act="sg-tap" data-id="${x.id}" aria-label="${done ? 'Uncheck' : 'Check off'} ${esc(descFor(it, store))}">
         <span class="row-name">${esc(descFor(it, store))}</span>
         <span class="row-sub"><b class="sg-qty">${esc(x.qty)}</b>${x.why ? ` · ${esc(x.why)}` : ''}</span>
-        ${store === 'wegmans' && it.a && it.a !== it.w ? `<span class="row-sub sg-alt">Aldi: ${esc(it.a)}</span>` : ''}
       </button>
       <button class="btn sq sg-x" data-act="sg-hide" data-id="${x.id}" aria-label="Take off the list">${icon('close', 8)}</button>
     </div>`;
@@ -145,9 +169,9 @@ export function renderGrocery() {
     </div>
     ${group('Your last 7 days', rv.days < 3
       ? '<p class="muted small">Log food for a few days and this list adapts to what you\'re missing. For now it\'s a balanced list for a lifting athlete.</p>'
-      : `${reviewRows(rv)}${plan.focus && plan.focus.length ? `<p class="bq-advice">${icon('up', 10)} This week's list leans on ${esc(plan.focus.map((k) => NEED_LABEL[k]).join(', '))}.</p>` : '<p class="ok-line">' + icon('check', 16) + ' Eating well - this is a balanced restock.</p>'}`)}
+      : `<p class="muted small">The last 7 full days, through yesterday.</p>${reviewRows(rv)}${plan.focus && plan.focus.length ? `<p class="bq-advice">${icon('up', 10)} This week's list leans on ${esc(plan.focus.map((k) => NEED_LABEL[k]).join(', '))}.</p>` : '<p class="ok-line">' + icon('check', 16) + ' Eating well - this is a balanced restock.</p>'}`)}
     ${group(`This week's list${left ? ` (${left} to get)` : ''}`, `
-      <p class="muted small">Tap an item to copy it. Check it off when it's in the cart.</p>
+      <p class="muted small">Tap an item to check it off. Press and hold one to copy its name.</p>
       <div class="list">${smart}</div>
       <div class="btn-row">${btn('Copy list', 'sg-copy-all', { cls: 'primary grow' })}${btn('Share', 'gr-share')}${btn('Rebuild', 'sg-rebuild')}</div>
       <p class="muted small">Built ${esc(prettyDay(plan.built))} from your log. Rebuild after a few more days of logging.</p>`)}
@@ -257,11 +281,13 @@ on({
   'sg-got': (el) => { const plan = currentPlan(); plan.got[el.dataset.id] = el.checked; buzz(HAPTIC.tap); save(); rerender(); },
   'sg-hide': (el) => { const plan = currentPlan(); plan.items = plan.items.filter((x) => x.id !== el.dataset.id); save(); rerender(); },
   'sg-rebuild': () => { S.grocerySmart = buildList(); save(); buzz(HAPTIC.press); toast('Rebuilt from your last 7 days', 'cart'); rerender(); },
-  'sg-copy': async (el) => {
-    const it = CAT_BY_ID[el.dataset.id]; if (!it) return;
-    const x = currentPlan().items.find((y) => y.id === it.id);
-    const text = `${descFor(it, storeOf())}${x ? ` - ${x.qty}` : ''}`;
-    if (await copyText(text)) { buzz(HAPTIC.tap); toast(`Copied: ${it.name}`, 'check'); } else toast('Could not copy on this phone', 'warn');
+  'sg-copy': (el) => copyItem(el.dataset.id),
+  // a tap checks the item off (a press-and-hold copies it instead - see below)
+  'sg-tap': (el) => {
+    const id = el.dataset.id;
+    if (held === id) { held = null; return; }
+    const plan = currentPlan(); plan.got[id] = !plan.got[id];
+    buzz(HAPTIC.tap); save(); rerender();
   },
   'sg-copy-all': async () => {
     if (await copyText(listText())) { buzz(HAPTIC.press); toast('List copied - paste it in Notes or a text', 'check'); } else toast('Could not copy on this phone', 'warn');

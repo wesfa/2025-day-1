@@ -8,6 +8,7 @@
 // store. Aldi names use its store brands (Kirkwood chicken, Friendly Farms dairy, Goldhen eggs, Millville oats...).
 import { S, getFood, targets, totals } from './store.js';
 import { dayKey, addDays } from './util.js';
+import { paceStatus } from './weight.js';
 
 export const STORES = [['wegmans', 'Wegmans'], ['aldi', 'Aldi'], ['any', 'Any store']];
 export const SECTIONS = ['Meat & Fish', 'Dairy & Eggs', 'Produce', 'Frozen', 'Bread & Grains', 'Pantry', 'Snacks', 'Supplements'];
@@ -130,7 +131,8 @@ const JUNK_CATS = new Set(['Fast Food', 'Snacks']);
 const PRODUCE_CATS = new Set(['Fruit', 'Veggies']);
 
 // ---------- what the last 7 days looked like ----------
-export function weekReview(end = dayKey()) {
+// The last 7 full days (through yesterday - today isn't over yet), same as the weekly report
+export function weekReview(end = addDays(dayKey(), -1)) {
   const days = [];
   for (let i = 0; i < 7; i++) {
     const k = addDays(end, -i);
@@ -155,7 +157,7 @@ export function weekReview(end = dayKey()) {
     }
   }
   const avg = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, n ? v / n : 0]));
-  return { days: n, avg: avg(sum), goal: avg(tgt), junkShare: sum.cal > 0 ? junkCal / sum.cal : 0, produce: n ? produce / n : 0, microGaps: items ? unknown / items : 0 };
+  return { days: n, pace: paceStatus(), avg: avg(sum), goal: avg(tgt), junkShare: sum.cal > 0 ? junkCal / sum.cal : 0, produce: n ? produce / n : 0, microGaps: items ? unknown / items : 0 };
 }
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -177,7 +179,8 @@ export function needsFrom(rv) {
   N.produce = clamp01((4 - rv.produce) / 4);
   N.junk = clamp01((rv.junkShare - 0.15) / 0.3);
   if (g.cal) {
-    if (!cut) N.calories = clamp01((g.cal * 0.95 - a.cal) / g.cal / 0.2);
+    // under the calorie goal only matters if the scale agrees (not gaining fast already)
+    if (!cut && !(rv.pace && (rv.pace.status === 'fast' || rv.pace.status === 'ok'))) N.calories = clamp01((g.cal * 0.95 - a.cal) / g.cal / 0.2);
     else N.cut = clamp01((a.cal - g.cal * 1.05) / g.cal / 0.2);
   }
   if (g.c) N.carbs = clamp01((g.c * 0.9 - a.c) / g.c / 0.3);

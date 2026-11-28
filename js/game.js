@@ -137,7 +137,7 @@ export function renderGame() {
     </div>
     <div class="gl-wrap sunken"><canvas id="gl-canvas" aria-label="Gridlock board. Drag pieces from the tray onto the grid."></canvas></div>
     <p class="muted small gl-help">Drag a piece onto the grid. Fill a whole row or column to clear it. Keep clearing for combos.</p>
-    <div class="btn-row">${btn('New game', 'gl-new', { ico: 'blocks' })}${btn(S.settings.sound ? 'Sound on' : 'Sound off', 'gl-sound')}</div>
+    <div class="btn-row">${btn('New game', 'gl-new', { ico: 'blocks' })}${btn(S.settings.sound ? 'Sound: on' : 'Sound: off', 'gl-sound')}</div>
   `, { ico: 'blocks', cls: 'game-win' });
 }
 
@@ -419,6 +419,6 @@ on({
   'gl-sound': (el) => {
     S.settings.sound = !S.settings.sound;
     save();
-    el.textContent = S.settings.sound ? 'Sound on' : 'Sound off';
+    el.textContent = S.settings.sound ? 'Sound: on' : 'Sound: off';
   },
 });

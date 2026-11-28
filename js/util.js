@@ -81,6 +81,9 @@ export function fmtDuration(ms) {
   return h ? `${h}:${pad2(m)}:${pad2(sec)}` : `${m}:${pad2(sec)}`;
 }
 
+// "170 x 3 or 165 x 4" without a line break inside either pair
+export const nwPairs = (label) => String(label).split(' or ').map((p) => `<span class="nw">${esc(p)}</span>`).join(' or ');
+
 // A length of time in words: "45 min", "1h 10m"
 export function fmtLength(ms) {
   const m = Math.max(0, Math.round(ms / 60000));
