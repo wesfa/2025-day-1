@@ -10,7 +10,7 @@ import { S, getFood, targets, totals } from './store.js';
 import { dayKey, addDays } from './util.js';
 import { paceStatus } from './weight.js';
 
-export const STORES = [['wegmans', 'Wegmans'], ['aldi', 'Aldi'], ['any', 'Any store']];
+export const STORES = [['wegmans', 'Wegmans'], ['tj', 'Trader Joe\'s'], ['aldi', 'Aldi'], ['any', 'Any store']];
 export const SECTIONS = ['Meat & Fish', 'Dairy & Eggs', 'Produce', 'Frozen', 'Bread & Grains', 'Pantry', 'Snacks', 'Supplements'];
 
 // srv + nutrition per serving (approx): cal, p, c, f, fib, na, pot
@@ -126,6 +126,59 @@ export const CATALOG = [
     '1 shake', [160, 30, 5, 3, 1, 370, 400], { prot: 0.9, lean: 0.8 }, 0, 1, 'pack'),
 ];
 export const CAT_BY_ID = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
+
+// Trader Joe's (store #2): its own-label names where it has one; where it usually doesn't carry something, it says so.
+// TJ's selection changes by store and season.
+const TJ = {
+  'chicken-breast': "Trader Joe's Boneless Skinless Chicken Breasts (fresh meat case)",
+  'chicken-thighs': "Trader Joe's Boneless Skinless Chicken Thighs",
+  'beef-93': "Trader Joe's Lean Ground Beef (pick 93/7 or leaner)",
+  'turkey-93': "Trader Joe's Lean Ground Turkey, 93/7",
+  salmon: "Trader Joe's Frozen Wild Alaskan Sockeye Salmon Fillets",
+  shrimp: "Trader Joe's Frozen Raw Shrimp, peeled & deveined (or Argentinian Red Shrimp)",
+  tuna: "Trader Joe's Skipjack (light) Tuna in Water, 5 oz cans",
+  eggs: "Trader Joe's Large Cage Free Eggs, 1 dozen (grab 2)",
+  'greek-yogurt': "Trader Joe's Nonfat Plain Greek Yogurt, 32 oz tub",
+  'cottage-cheese': "Trader Joe's Lowfat Cottage Cheese, 16 oz",
+  milk: "Trader Joe's Whole Milk, 1 gallon (or 2 half gallons)",
+  'uf-milk': 'Ultra-filtered milk (fairlife) - usually not at Trader Joe\'s; grab it at Wegmans or use regular milk',
+  'choc-milk': "Trader Joe's Lowfat Chocolate Milk, half gallon",
+  bananas: 'Bananas (sold each at Trader Joe\'s - grab 6-7)',
+  apples: 'Apples, bag (Honeycrisp or Gala)',
+  clementines: 'Clementines, 3 lb bag',
+  spinach: "Trader Joe's Organic Baby Spinach, bag",
+  'sweet-potatoes': 'Sweet potatoes (loose or bag)',
+  potatoes: "Trader Joe's Russet Potatoes, bag (or the Teeny Tiny Potatoes)",
+  avocados: 'Avocados, bag of 4',
+  carrots: "Trader Joe's Organic Baby Carrots, 1 lb bag",
+  broccoli: "Trader Joe's Frozen Broccoli Florets",
+  'mixed-veg': "Trader Joe's Frozen Organic Foursome or other plain mixed vegetables (no sauce)",
+  berries: "Trader Joe's Frozen Fancy Berry Medley (or Organic Wild Blueberries)",
+  oats: "Trader Joe's Rolled Oats",
+  rice: "Trader Joe's Jasmine Rice, bag (or the Frozen Organic Jasmine Rice pouches)",
+  'ww-bread': "Trader Joe's 100% Whole Wheat Bread (or Sprouted Wheat)",
+  bagels: "Trader Joe's Plain Bagels, 6 pack",
+  'ww-pasta': "Trader Joe's Organic Whole Wheat Spaghetti or Penne",
+  'peanut-butter': "Trader Joe's Creamy Salted Peanut Butter (peanuts + salt)",
+  'mixed-nuts': "Trader Joe's Unsalted Mixed Nuts (or Simply the Best Trek Mix)",
+  'black-beans': "Trader Joe's Organic Black Beans, 15 oz cans (low sodium if there)",
+  'olive-oil': "Trader Joe's Extra Virgin Olive Oil",
+  raisins: "Trader Joe's Thompson Seedless Raisins",
+  'yogurt-cups': "Trader Joe's Greek yogurt cups, single serve (pick the ones with 12 g+ protein)",
+  'string-cheese': "Trader Joe's Light String Cheese, 12 pack",
+  hummus: "Trader Joe's Mediterranean Hummus",
+  edamame: "Trader Joe's Frozen Shelled Edamame",
+  'ready-rice': "Trader Joe's Frozen Organic Jasmine or Brown Rice (3 microwave pouches)",
+  'protein-pasta': "Trader Joe's Red Lentil Sedanini or chickpea pasta",
+  'bran-cereal': "Trader Joe's high-fiber cereal (High Fiber O's or Bran Flakes)",
+  tortillas: "Trader Joe's Whole Wheat Tortillas (or Carb Savvy)",
+  'pancake-mix': "Trader Joe's Buttermilk Protein Pancake Mix",
+  'canned-chicken': "Trader Joe's canned chicken breast, or Just Chicken (plain cooked strips, fridge case)",
+  'protein-bars': 'Protein bars, 20 g+ protein - Trader Joe\'s bar shelf (or Wegmans)',
+  jerky: "Trader Joe's Original Beef Jerky",
+  whey: 'Whey protein powder - Trader Joe\'s has a vanilla or chocolate whey some weeks; if not, Wegmans nutrition aisle',
+  'rtd-shakes': 'Ready-to-drink protein shakes, 30 g protein - not always at Trader Joe\'s; Wegmans or Aldi if not',
+};
 
 const JUNK_CATS = new Set(['Fast Food', 'Snacks']);
 const PRODUCE_CATS = new Set(['Fruit', 'Veggies']);
@@ -285,7 +338,7 @@ export function buildList(size = 20) {
 
 // The description to look for at the chosen store (Wegmans first, then Aldi, then any store)
 export function descFor(it, store) {
-  let d = store === 'aldi' ? it.a || it.any : store === 'any' ? it.any : it.w || it.a || it.any;
+  let d = store === 'tj' ? TJ[it.id] || it.any : store === 'aldi' ? it.a || it.any : store === 'any' ? it.any : it.w || it.a || it.any;
   // cutting: 2% milk instead of whole
   if (it.id === 'milk' && S.profile.goalWeight < S.profile.startWeight - 1) d = d.replace(/Whole Milk/i, '2% Reduced Fat Milk');
   return d;
