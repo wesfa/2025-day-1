@@ -1335,45 +1335,13 @@ body.glance { padding-bottom: 0; overflow: hidden; }
 body.from-glance #app { animation: glIn 0.35s ease both; }
 @media (prefers-reduced-motion: reduce) { .glance-view, .gl-tap, body.from-glance #app { animation: none; } }
 
-/* ---------- Glance billboard: today's numbers on an LED screen bolted to the buildings, behind the side tower ---------- */
-#city .cx-bb { display: none; position: absolute; left: 150px; bottom: calc(var(--wl) + 26px); width: 178px; padding: 3px;
-  background: #1b130e; box-shadow: 0 0 0 1px #3a2919, 0 2px 0 1px #0d0806; image-rendering: pixelated; }
-body.bb-on #city .cx-bb { display: block; animation: bbOn 1.1s steps(5) both; }
-@keyframes bbOn { 0% { opacity: 0; } 40% { opacity: 0.6; } 60% { opacity: 0.25; } 100% { opacity: 1; } }  /* flickers on like a real sign */
-/* two little lamps on arms lighting the board from above */
-#city .cx-bb .bb-lamp { position: absolute; top: -9px; width: 10px; height: 3px; background: #2c1f15; }
-#city .cx-bb .bb-lamp::before { content: ''; position: absolute; left: 4px; top: 3px; width: 2px; height: 6px; background: #2c1f15; }
-#city .cx-bb .bb-lamp::after { content: ''; position: absolute; left: -8px; top: 3px; width: 26px; height: 22px; background: radial-gradient(ellipse at 50% 0%, rgba(255, 200, 120, 0.22), rgba(255, 200, 120, 0) 70%); }
-#city .cx-bb .bb-lamp.l { left: 28px; } #city .cx-bb .bb-lamp.r { right: 28px; }
-#city .bb-screen { position: relative; overflow: hidden; background: #0b0705; padding: 5px 7px 4px; color: #ffb257;
-  font-family: 'VT323', monospace; line-height: 1; text-shadow: 0 0 4px rgba(255, 150, 50, 0.7); }
-#city .bb-screen::after { content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 3px); }   /* LED rows */
-#city .bb-cal { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
-#city .bb-cal b { font-weight: 400; font-size: 34px; color: #ffc77e; }
-#city .bb-cal span { font-size: 15px; opacity: 0.8; }
-#city .bb-bar { height: 5px; margin: 3px 0 5px; background: rgba(255, 160, 60, 0.13); }
-#city .bb-bar span { display: block; height: 100%; background: repeating-linear-gradient(90deg, #ffb257 0 5px, transparent 5px 6px); }
-#city .bb-macs { display: flex; justify-content: space-between; font-size: 15px; white-space: nowrap; }
-#city .bb-macs em { font-style: normal; margin-right: 2px; }
-#city .bb-macs em.p { color: #6fcfff; } #city .bb-macs em.c { color: #8fe06c; } #city .bb-macs em.f { color: #ff9cc4; }
-#city .bb-macs small { font-size: 12px; opacity: 0.6; }
-#city .bb-tick { margin-top: 4px; font-size: 13px; white-space: nowrap; overflow: hidden; opacity: 0.75; }
-#city .bb-tick span { display: inline-block; padding-right: 18px; animation: tick 16s steps(160) infinite; }
-@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-100%); } }
-/* daylight: no glow, the frame picks up the slate of the city */
-[data-sky="day"] #city .cx-bb, [data-sky="golden"] #city .cx-bb { background: #1f2a37; box-shadow: 0 0 0 1px #3c4b5e, 0 2px 0 1px #111821; }
-[data-sky="day"] #city .bb-screen { text-shadow: none; }
-[data-sky="day"] #city .cx-bb .bb-lamp::after { display: none; }
-/* its glow in the water below */
-#city .cx-bbref { display: none; left: 158px; width: 162px; top: calc(100% - var(--wl) + 3px); height: 40px; opacity: 0.32;
-  background: repeating-linear-gradient(to bottom, rgba(255, 170, 80, 0.6) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(90deg, transparent 0 9px, rgba(11, 8, 6, 0.9) 9px 13px, transparent 13px 22px);
-  -webkit-mask-image: radial-gradient(ellipse 50% 100% at 50% 0%, #000 30%, transparent 100%); mask-image: radial-gradient(ellipse 50% 100% at 50% 0%, #000 30%, transparent 100%);
-  animation: bbref 1.6s steps(4) infinite; }
-body.bb-on #city .cx-bbref { display: block; }
-[data-sky="day"] #city .cx-bbref { opacity: 0.18; }
-@keyframes bbref { 0%, 100% { background-position: 0 0; } 50% { background-position: 2px 2px; } }
-/* with the billboard showing, the floating numbers step aside (other color schemes keep them) */
+/* ---------- Glance: today's numbers as lit windows on the left tower's face ---------- */
+/* the tower's lower block: art x 2-41, y 184-257 of side-*.png (72x300 drawn at 2x, same top as .cl-side) */
+#city .cx-facade { display: none; position: absolute; left: -2px; width: 80px; height: 148px; pointer-events: none;
+  top: calc(max(calc(env(safe-area-inset-top) + 18px), calc(100% - var(--wl) + 6px - 600px)) + 368px);
+  image-rendering: crisp-edges; image-rendering: pixelated; }
+body.bb-on #city .cx-facade { display: block; animation: facadeOn 1.4s steps(4) both; }
+@keyframes facadeOn { 0% { opacity: 0; } 35% { opacity: 0.7; } 55% { opacity: 0.3; } 100% { opacity: 1; } }   /* the lights come on */
+/* with the numbers on the tower, the floating ones step aside (other color schemes keep them) */
 body.bb-on .gl-box { display: none; }
-@media (prefers-reduced-motion: reduce) { #city .bb-tick span, #city .cx-bbref, body.bb-on #city .cx-bb { animation: none; } }
+@media (prefers-reduced-motion: reduce) { body.bb-on #city .cx-facade { animation: none; } }

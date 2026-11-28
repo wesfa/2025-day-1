@@ -61,20 +61,51 @@ let hiddenAt = 0;
 const wantGlance = () => S.setupDone && S.settings.glance !== false && route() === 'today' && !activeWorkout() && !modalOpen();
 let glance = wantGlance();
 
-// In the City scheme the numbers go on an LED billboard on the buildings instead of floating over the sky
-function fillBillboard(t, tg, hello) {
-  const bb = document.getElementById('city-bb');
-  if (!bb || document.documentElement.dataset.theme !== 'dusk') return false;
-  const left = tg.cal - t.cal;
-  const pct = (v, g) => Math.max(0, Math.min(100, (v / (g || 1)) * 100)).toFixed(1);
-  const tick = `${hello} · ${longDate(new Date())} · ${left >= 0 ? `${fmt(left)} kcal left` : `${fmt(-left)} kcal over`} · `.toUpperCase();
-  bb.innerHTML = `<i class="bb-lamp l"></i><i class="bb-lamp r"></i>
-    <div class="bb-screen">
-      <div class="bb-cal"><b>${fmt(t.cal)}</b><span>/${fmt(tg.cal)} KCAL</span></div>
-      <div class="bb-bar"><span style="width:${pct(t.cal, tg.cal)}%"></span></div>
-      <div class="bb-macs">${[['p', 'P'], ['c', 'C'], ['f', 'F']].map(([m, l]) => `<span><em class="${m}">${l}</em>${fmt(t[m])}<small>/${fmt(tg[m])}</small></span>`).join('')}</div>
-      <div class="bb-tick"><span>${esc(tick)}</span><span>${esc(tick)}</span></div>
-    </div>`;
+// In the City scheme the numbers are lit windows on the face of the tall tower at the left: same pixel grid,
+// same window colors as the art, so they look like part of the building (tools/skyline.py side_structure).
+const FACADE = {   // the tower's wall and window colors at each time of day (from the art's painter)
+  dawn: ['#170f1c', '#d0784a', '#f0a060', '#ffd7a0'], day: ['#2a3748', '#a9c0d6', '#dbe8f3', '#ffffff'],
+  golden: ['#2a1f28', '#e0a070', '#ffc890', '#fff0c0'], dusk: ['#120a06', '#c8742a', '#f09a3a', '#ffd48a'],
+  night: ['#07080d', '#e0943a', '#ffb54a', '#ffe2a0'],
+};
+const GLYPH = {
+  0: '###/#.#/#.#/#.#/###', 1: '.#./##./.#./.#./###', 2: '###/..#/###/#../###', 3: '###/..#/###/..#/###', 4: '#.#/#.#/###/..#/..#',
+  5: '###/#../###/..#/###', 6: '###/#../###/#.#/###', 7: '###/..#/..#/.#./.#.', 8: '###/#.#/###/#.#/###', 9: '###/#.#/###/..#/###',
+  P: '##./#.#/##./#../#..', C: '.##/#../#../#../.##', F: '###/#../##./#../#..', K: '#.#/#.#/##./#.#/#.#', A: '.#./#.#/###/#.#/#.#',
+  L: '#../#../#../#../###', '/': '..#/..#/.#./#../#..', ' ': '.../.../.../.../...',
+};
+function fillFacade(t, tg) {
+  const cv = document.getElementById('city-facade');
+  if (!cv || document.documentElement.dataset.theme !== 'dusk') return false;
+  const g = cv.getContext('2d');
+  const [wall, ...lit] = FACADE[document.documentElement.dataset.sky] || FACADE.night;
+  const W = cv.width;
+  g.clearRect(0, 0, W, cv.height);
+  g.fillStyle = wall;
+  g.fillRect(0, 0, W, cv.height);   // a quiet stretch of wall (the windows here go dark)
+  // a light per font pixel, varied like the real windows (most warm, some brighter, a few hot)
+  const shade = (x, y) => { const h = Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1; return lit[h > 0.94 ? 2 : h > 0.62 ? 1 : 0]; };
+  const text = (str, y, s) => {
+    const chars = String(str).split('');
+    const w = chars.reduce((a, ch) => a + (ch === ' ' ? 2 : 3) * s + s, -s);
+    let x = Math.round((W - w) / 2);
+    for (const ch of chars) {
+      const rows = (GLYPH[ch] || GLYPH[' ']).split('/');
+      const cw = ch === ' ' ? 2 : 3;
+      rows.forEach((row, ry) => row.split('').forEach((c, rx) => {
+        if (c !== '#') return;
+        for (let i = 0; i < s; i++) for (let j = 0; j < s; j++) { const px = x + rx * s + i; const py = y + ry * s + j; g.fillStyle = shade(px, py); g.fillRect(px, py, 1, 1); }
+      }));
+      x += cw * s + s;
+    }
+  };
+  const r = (v) => String(Math.max(0, Math.round(v)));
+  text(r(t.cal), 3, 2);                       // calories eaten, big
+  text(`/${r(tg.cal)}`, 16, 1);               // of the goal
+  text(`P${r(t.p)}`, 28, 2);                  // protein, carbs, fat
+  text(`C${r(t.c)}`, 42, 2);
+  text(`F${r(t.f)}`, 56, 2);
+  cv.dataset.text = `${r(t.cal)} /${r(tg.cal)} P${r(t.p)} C${r(t.c)} F${r(t.f)}`;
   return true;
 }
 
@@ -86,7 +117,7 @@ function renderGlance() {
   const pct = Math.max(0, Math.min(100, (t.cal / (tg.cal || 1)) * 100));
   const h = new Date().getHours();
   const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  document.body.classList.toggle('bb-on', fillBillboard(t, tg, hello));
+  document.body.classList.toggle('bb-on', fillFacade(t, tg));
   return `<button class="glance-view" data-act="glance-open" aria-label="Today: ${fmt(t.cal)} of ${fmt(tg.cal)} calories, ${fmt(t.p)} of ${tg.p} grams protein, ${fmt(t.c)} of ${tg.c} carbs, ${fmt(t.f)} of ${tg.f} fat. Tap to open.">
     <span class="gl-box">
       <span class="gl-hello">${hello}</span>

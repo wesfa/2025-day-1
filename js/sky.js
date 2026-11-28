@@ -249,9 +249,8 @@ function build() {
       ${pair('pyramid')}${pair('far')}${pair('haze2')}<i class="cx cx-cloud k4"></i>${pair('mid')}${over('mid', 'wa', 'wb')}${pair('haze')}
       <i class="cx cx-holo"></i><i class="cx cx-cloud k5"></i><i class="cx cx-cloud k6"></i>
       ${pair('near')}${over('near', 'wa', 'wb', 'wc', 'nx', 'kx')}
-      <div class="cx-bb" id="city-bb" aria-hidden="true"></div>
-      ${pair('side')}${over('side', 'wa', 'wb', 'nx', 'kx')}<i class="cx cx-fog"></i>
-      ${pair('water')}${pair('ref-a')}${pair('ref-b')}${pair('ref-c')}${pair('ref-d')}<i class="cx cx-bbref"></i>
+      ${pair('side')}${over('side', 'wa', 'wb', 'nx', 'kx')}<canvas class="cx-facade" id="city-facade" width="40" height="74"></canvas><i class="cx cx-fog"></i>
+      ${pair('water')}${pair('ref-a')}${pair('ref-b')}${pair('ref-c')}${pair('ref-d')}
       <i class="cx cx-birds"><b class="f0"></b><b class="f1"></b><b class="f2"></b><b class="f3"></b></i>
       ${pair('dock')}
       <i class="cx cx-gloom"></i>
