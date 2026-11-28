@@ -59,7 +59,6 @@ export function renderToday() {
   const next = nextTemplate();
   const due = dueNow().filter((r) => r.kind !== 'weigh');
   const rule = dateRule(k);
-  const name = S.profile.name ? `, ${esc(S.profile.name)}` : '';
   const hour = new Date().getHours();
   const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
@@ -98,11 +97,11 @@ export function renderToday() {
 
   return `
   <div class="today-hero">
-    <div class="th-hello">${hello}${name}</div>
+    <div class="th-hello">${hello}</div>
     <div class="th-date">${esc(longDate(new Date()))}${st ? ` <span class="th-streak">${icon('flame', 14)} ${st}-day streak</span>` : ''}</div>
   </div>
   ${nudges}
-  ${win(`${hello}${name}`, `
+  ${win(hello, `
     <div class="today-top">
       <span>${esc(longDate(new Date()))}</span>
       ${st ? `<span class="streak">${icon('flame', 16)} ${st}-day streak</span>` : '<span class="muted small">Log food to start a streak</span>'}

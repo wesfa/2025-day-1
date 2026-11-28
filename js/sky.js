@@ -12,7 +12,12 @@ const ART = 'art/city/';
 const PHASES = ['dawn', 'day', 'golden', 'dusk', 'night'];
 // [element class, image name]: each painted five ways (art/city/<image>-<phase>.png)
 const LAYERS = [['sky', 'sky'], ['pyramid', 'pyramid'], ['far', 'far'], ['haze2', 'haze'], ['mid', 'mid'], ['haze', 'haze'],
-  ['near', 'near'], ['side', 'side'], ['water', 'water'], ['ref-a', 'ref-a'], ['ref-b', 'ref-b'], ['dock', 'dock']];
+  ['near', 'near'], ['side', 'side'], ['water', 'water'], ['ref-a', 'ref-a'], ['ref-b', 'ref-b'], ['dock', 'dock'],
+  // animation overlays (tools/city_anim.py): extra water frames, windows switching on/off, sign flicker, beacons
+  ['ref-c', 'ref-c'], ['ref-d', 'ref-d'],
+  ['mid-wa', 'mid-wa'], ['mid-wb', 'mid-wb'],
+  ['near-wa', 'near-wa'], ['near-wb', 'near-wb'], ['near-wc', 'near-wc'], ['near-nx', 'near-nx'], ['near-kx', 'near-kx'],
+  ['side-wa', 'side-wa'], ['side-wb', 'side-wb'], ['side-nx', 'side-nx'], ['side-kx', 'side-kx']];
 const WX_KEY = 'macros:weather';
 const PREVIEW_KEY = 'macros:sky-preview';
 const MIN = 60000;
@@ -230,20 +235,24 @@ function build() {
   const scene = document.getElementById('scene');
   if (!scene || built) return;
   const pair = (l) => `<i class="cl cl-${l} pa"></i><i class="cl cl-${l} pb"></i>`;
+  // an overlay sits exactly on its layer (same size and position), so it gets that layer's class too
+  const over = (base, ...names) => names.map((n) => `<i class="cl cl-${base} ov cl-${base}-${n} pa"></i><i class="cl cl-${base} ov cl-${base}-${n} pb"></i>`).join('');
   const html = `
     <div id="city" aria-hidden="true">
       ${pair('sky')}
-      <i class="cx cx-stars a"></i><i class="cx cx-stars b"></i><i class="cx cx-embers"></i>
+      <i class="cx cx-stars a"></i><i class="cx cx-stars b"></i><i class="cx cx-stars c"></i><i class="cx cx-embers"></i>
       <i class="cx cx-sunlow"></i><i class="cx cx-sunday"></i><i class="cx cx-moon"></i>
       <i class="cx cx-dim"></i><i class="cx cx-deck"></i>
       <i class="cx cx-cloud k1"></i><i class="cx cx-cloud k2"></i><i class="cx cx-cloud k3"></i>
-      <i class="cx cx-line l1"></i><i class="cx cx-line l2"></i>
+      <i class="cx cx-line l1"></i><i class="cx cx-line l2"></i><i class="cx cx-pod"></i>
       <i class="cx cx-beam b1"></i><i class="cx cx-beam b2"></i><i class="cx cx-beam b3"></i>
-      ${pair('pyramid')}${pair('far')}${pair('haze2')}<i class="cx cx-cloud k4"></i>${pair('mid')}${pair('haze')}
+      ${pair('pyramid')}${pair('far')}${pair('haze2')}<i class="cx cx-cloud k4"></i>${pair('mid')}${over('mid', 'wa', 'wb')}${pair('haze')}
       <i class="cx cx-holo"></i><i class="cx cx-cloud k5"></i><i class="cx cx-cloud k6"></i>
-      ${pair('near')}${pair('side')}<i class="cx cx-fog"></i>
-      ${pair('water')}${pair('ref-a')}${pair('ref-b')}
-      <i class="cx cx-birds"><b class="f1"></b><b class="f2"></b></i>
+      ${pair('near')}${over('near', 'wa', 'wb', 'wc', 'nx', 'kx')}
+      <div class="cx-bb" id="city-bb" aria-hidden="true"></div>
+      ${pair('side')}${over('side', 'wa', 'wb', 'nx', 'kx')}<i class="cx cx-fog"></i>
+      ${pair('water')}${pair('ref-a')}${pair('ref-b')}${pair('ref-c')}${pair('ref-d')}<i class="cx cx-bbref"></i>
+      <i class="cx cx-birds"><b class="f0"></b><b class="f1"></b><b class="f2"></b><b class="f3"></b></i>
       ${pair('dock')}
       <i class="cx cx-gloom"></i>
       <i class="cx cx-rain far"></i><i class="cx cx-rain near"></i><i class="cx cx-snow far"></i><i class="cx cx-snow near"></i>

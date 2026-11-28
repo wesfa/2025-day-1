@@ -12,7 +12,7 @@ import { setSkyActive, skyState, skyLabel, skySettings, refreshWeather, useMyLoc
 
 const fmtN = (n) => Math.round(n || 0).toLocaleString('en-US');
 
-export const APP_VERSION = '1.18.0';
+export const APP_VERSION = '1.19.0';
 
 export const THEMES = {
   dusk: 'City (live sky)',
@@ -91,7 +91,6 @@ export function renderSettings() {
     ${show('me', group('Profile', `
       <form id="prof" onsubmit="return false">
         <div class="grid2">
-          ${field('Name', `<input class="inp" name="name" value="${esc(p.name)}" placeholder="Your name">`)}
           ${field('Position', select('position', [['DE', 'DE'], ['DT', 'DT'], ['DE/DT', 'DE / DT'], ['NT', 'Nose tackle']], p.position))}
           ${field('Age', numInput('age', p.age, { step: 1 }))}
           ${field('Height', select('heightIn', heightOpts(), p.heightIn))}
@@ -181,7 +180,7 @@ on({
   'prof-save': () => {
     const v = formData(document.getElementById('prof'));
     Object.assign(S.profile, {
-      name: v.name.trim(), position: v.position, age: num(v.age, 17), heightIn: num(v.heightIn, 72),
+      name: '', position: v.position, age: num(v.age, 17), heightIn: num(v.heightIn, 72),
       startWeight: num(v.startWeight, S.profile.startWeight), goalWeight: num(v.goalWeight, S.profile.goalWeight),
       rate: num(v.rate, 0.5), sex: v.sex, phase: v.phase,
     });

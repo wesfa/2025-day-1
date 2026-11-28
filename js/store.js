@@ -108,6 +108,8 @@ export function normalize(data) {
 
 function migrate(s) {
   const d = defaults();
+  // the app doesn't use a name anywhere - forget any that was saved
+  if (s.profile && s.profile.name) s.profile.name = '';
   // v1.2: Island became the default scheme. Move anyone still on the old default over once;
   // a scheme picked on purpose (anything else) is left alone.
   if (s.settings && !s.settings.themeV) {

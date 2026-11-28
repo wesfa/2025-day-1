@@ -61,6 +61,23 @@ let hiddenAt = 0;
 const wantGlance = () => S.setupDone && S.settings.glance !== false && route() === 'today' && !activeWorkout() && !modalOpen();
 let glance = wantGlance();
 
+// In the City scheme the numbers go on an LED billboard on the buildings instead of floating over the sky
+function fillBillboard(t, tg, hello) {
+  const bb = document.getElementById('city-bb');
+  if (!bb || document.documentElement.dataset.theme !== 'dusk') return false;
+  const left = tg.cal - t.cal;
+  const pct = (v, g) => Math.max(0, Math.min(100, (v / (g || 1)) * 100)).toFixed(1);
+  const tick = `${hello} · ${longDate(new Date())} · ${left >= 0 ? `${fmt(left)} kcal left` : `${fmt(-left)} kcal over`} · `.toUpperCase();
+  bb.innerHTML = `<i class="bb-lamp l"></i><i class="bb-lamp r"></i>
+    <div class="bb-screen">
+      <div class="bb-cal"><b>${fmt(t.cal)}</b><span>/${fmt(tg.cal)} KCAL</span></div>
+      <div class="bb-bar"><span style="width:${pct(t.cal, tg.cal)}%"></span></div>
+      <div class="bb-macs">${[['p', 'P'], ['c', 'C'], ['f', 'F']].map(([m, l]) => `<span><em class="${m}">${l}</em>${fmt(t[m])}<small>/${fmt(tg[m])}</small></span>`).join('')}</div>
+      <div class="bb-tick"><span>${esc(tick)}</span><span>${esc(tick)}</span></div>
+    </div>`;
+  return true;
+}
+
 function renderGlance() {
   const k = dayKey();
   const t = totals(k);
@@ -69,10 +86,10 @@ function renderGlance() {
   const pct = Math.max(0, Math.min(100, (t.cal / (tg.cal || 1)) * 100));
   const h = new Date().getHours();
   const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  const name = S.profile.name ? `, ${esc(S.profile.name)}` : '';
+  document.body.classList.toggle('bb-on', fillBillboard(t, tg, hello));
   return `<button class="glance-view" data-act="glance-open" aria-label="Today: ${fmt(t.cal)} of ${fmt(tg.cal)} calories, ${fmt(t.p)} of ${tg.p} grams protein, ${fmt(t.c)} of ${tg.c} carbs, ${fmt(t.f)} of ${tg.f} fat. Tap to open.">
     <span class="gl-box">
-      <span class="gl-hello">${hello}${name}</span>
+      <span class="gl-hello">${hello}</span>
       <span class="gl-date">${esc(longDate(new Date()))}</span>
       <span class="gl-cal"><b class="vt">${fmt(t.cal)}</b><span class="gl-of">/ ${fmt(tg.cal)} kcal</span></span>
       <span class="gl-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
@@ -104,6 +121,7 @@ function render() {
   document.body.classList.remove('in-wizard');
   if (glance && route() !== 'today') glance = false;   // navigating anywhere else leaves the glance
   document.body.classList.toggle('glance', glance);
+  if (!glance) document.body.classList.remove('bb-on');
   if (glance) {
     $app.innerHTML = renderGlance();
     renderTaskbar(route());
@@ -336,7 +354,7 @@ setWizardDone((finished) => {
     go('#/today');
     if (finished === 'restored') return;
     if (!isStandalone()) setTimeout(openInstallHelp, 400);
-    else toast(`Let's go${S.profile.name ? ', ' + esc(S.profile.name) : ''}!`, 'palm');
+    else toast('Let\'s go!', 'palm');
     return;
   }
   render();

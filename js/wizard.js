@@ -38,7 +38,6 @@ function page() {
     case 1: return `
       <h2>About you</h2>
       <form id="wz" onsubmit="return false">
-        ${field('First name', `<input class="inp" name="name" value="${esc(p.name)}" placeholder="What should we call you?">`)}
         <div class="grid2">
           ${field('Position', select('position', [['DE', 'DE'], ['DT', 'DT'], ['DE/DT', 'DE / DT'], ['NT', 'Nose tackle']], p.position))}
           ${field('Age', numInput('age', p.age, { step: 1 }))}
@@ -77,7 +76,7 @@ function page() {
     default: {
       const t = calcTargets(p, p.startWeight);
       return `
-      <h2>You're all set${p.name ? ', ' + esc(p.name) : ''}!</h2>
+      <h2>You're all set!</h2>
       <p>Your daily targets:</p>
       <div class="target-grid">
         <div class="stat sunken"><span>Calories</span><b class="vt">${t.cal}</b></div>
@@ -120,7 +119,7 @@ function collect() {
   const v = formData(f);
   const p = S.profile;
   if (step === 1) {
-    Object.assign(p, { name: v.name.trim(), position: v.position, age: num(v.age, 17), heightIn: num(v.heightIn, 72), sex: v.sex });
+    Object.assign(p, { name: '', position: v.position, age: num(v.age, 17), heightIn: num(v.heightIn, 72), sex: v.sex });
   } else if (step === 2) {
     const sw = num(v.startWeight, 0); const gw = num(v.goalWeight, 0);
     if (!(sw > 80 && sw < 500) || !(gw > 80 && gw < 500)) { toast('Enter your weights in pounds', 'warn'); return false; }
@@ -171,7 +170,7 @@ on({
     onDone('restored');
     setTimeout(() => msgBox({
       title: 'Backup restored', ico: 'check',
-      text: `<p>Welcome back${S.profile.name ? ', ' + esc(S.profile.name) : ''}. Restored ${n.food} food entries, ${n.weights} weigh-ins and ${n.workouts} workouts, plus your profile, schedule, reminders and settings.</p>`,
+      text: `<p>Welcome back. Restored ${n.food} food entries, ${n.weights} weigh-ins and ${n.workouts} workouts, plus your profile, schedule, reminders and settings.</p>`,
     }), 300);
   },
 });

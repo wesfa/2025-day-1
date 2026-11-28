@@ -906,13 +906,40 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 #city .cl-haze { left: 0; right: 0; bottom: var(--wl); height: 140px; background-position: left bottom; background-size: 8px 140px; background-repeat: repeat-x; }
 #city .cl-near { left: 0; right: 0; bottom: var(--wl); height: 300px; background-position: -96px bottom; background-size: 640px 300px; background-repeat: repeat-x; }
 #city .cl-water { left: 0; right: 0; top: calc(100% - var(--wl)); bottom: 0; background-position: left top; background-size: 512px 256px; background-repeat: repeat-x; }
-#city .cl-ref-a, #city .cl-ref-b { left: 0; right: 0; top: calc(100% - var(--wl)); height: 256px; background-position: -96px top; background-size: 640px 256px; background-repeat: repeat-x; }
-#city .cl-ref-b { animation: blink 2.6s steps(1) infinite; }
+#city .cl-ref-a, #city .cl-ref-b, #city .cl-ref-c, #city .cl-ref-d { left: 0; right: 0; top: calc(100% - var(--wl)); height: 256px; background-position: -96px top; background-size: 640px 256px; background-repeat: repeat-x; }
+/* the water shimmers through 4 reflection frames (one shown at a time) */
+#city .cl-ref-a, #city .cl-ref-b, #city .cl-ref-c, #city .cl-ref-d { animation: frame4 2.4s steps(1) infinite; }
+#city .cl-ref-b { animation-delay: -1.8s; } #city .cl-ref-c { animation-delay: -1.2s; } #city .cl-ref-d { animation-delay: -0.6s; }
+@keyframes frame4 { 0% { visibility: visible; } 25%, 100% { visibility: hidden; } }
+#city .cl-water { animation: wdrift 180s steps(360) infinite; }   /* the water itself slowly drifts */
+@keyframes wdrift { to { background-position: -512px top; } }
 #city .cl-dock { left: 0; right: 0; bottom: calc(var(--tb-h) + env(safe-area-inset-bottom) - 18px); height: 80px; background-position: calc(50% - 110px) bottom; background-size: 800px 80px; background-repeat: repeat-x; }
 @keyframes blink { 0% { visibility: visible; } 50% { visibility: hidden; } }
 /* stars, embers, sun, moon */
 #city .cx-stars { left: 0; right: 0; top: 0; bottom: var(--wl); background: url('../art/city/stars-a.png') 0 0 / 256px 256px repeat; opacity: var(--stars, 0); }
 #city .cx-stars.b { background-image: url('../art/city/stars-b.png'); animation: blink 3.4s steps(1) infinite; }
+#city .cx-stars.c { background-image: url('../art/city/stars-c.png'); animation: blink 4.6s steps(1) infinite; animation-delay: -1.7s; }
+
+/* city life: windows switch on and off on their own slow cycles, a sign flickers now and then, beacons blink */
+#city .ov { visibility: hidden; }
+@keyframes win { 0% { visibility: hidden; } 34% { visibility: visible; } 71%, 100% { visibility: hidden; } }
+#city .cl-near-wa { animation: win 26s steps(1) infinite; }
+#city .cl-near-wb { animation: win 33s steps(1) infinite -11s; }
+#city .cl-near-wc { animation: win 41s steps(1) infinite -27s; }
+#city .cl-mid-wa { animation: win 29s steps(1) infinite -4s; }
+#city .cl-mid-wb { animation: win 37s steps(1) infinite -19s; }
+#city .cl-side-wa { animation: win 31s steps(1) infinite -8s; }
+#city .cl-side-wb { animation: win 44s steps(1) infinite -23s; }
+@keyframes flick { 0%, 86% { visibility: hidden; } 86.6% { visibility: visible; } 87.4% { visibility: hidden; } 88.6% { visibility: visible; } 89.4%, 100% { visibility: hidden; } }
+#city .cl-near-nx { animation: flick 11s steps(1) infinite -3s; }
+#city .cl-side-nx { animation: flick 17s steps(1) infinite -9s; }
+@keyframes beacon { 0% { visibility: hidden; } 55%, 100% { visibility: visible; } }
+#city .cl-near-kx { animation: beacon 2.2s steps(1) infinite; }
+#city .cl-side-kx { animation: beacon 2.2s steps(1) infinite -0.8s; }
+/* a monorail pod gliding along the light line now and then (only when the city lights are on) */
+#city .cx-pod { left: 0; width: 8px; height: 2px; bottom: calc(var(--wl) + 236px); background: #ffe2b0; opacity: var(--beams, 0);
+  box-shadow: 0 0 4px 1px rgba(255, 170, 80, 0.8), -8px 0 8px rgba(255, 170, 80, 0.3); animation: pod 28s linear infinite -6s; }
+@keyframes pod { 0% { transform: translateX(-24px); } 50%, 100% { transform: translateX(calc(100vw + 24px)); } }
 #city .cx-embers { left: 0; right: 0; top: 0; bottom: var(--wl); background: url('../art/city/embers.png') 0 0 / 192px 256px repeat; opacity: var(--embers, 0); animation: embers 120s steps(128) infinite; }
 @keyframes embers { from { background-position: 0 0; } to { background-position: 0 -256px; } }
 #city .cx-sunlow, #city .cx-sunday, #city .cx-moon { background-position: center; background-size: 100% 100%; background-repeat: no-repeat; }
@@ -951,9 +978,13 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 #city .cx-fog { left: 0; right: 0; bottom: calc(var(--wl) - 40px); height: 260px; background: url('../art/city/fog.png') 0 0 / 512px 120px repeat; opacity: var(--fog, 0); filter: var(--cloud-filter); }
 #city[data-kind="fog"] .cx-fog, #city[data-kind="rain"] .cx-fog, #city[data-kind="storm"] .cx-fog { animation: fogdrift 120s linear infinite; }
 @keyframes fogdrift { to { background-position: 512px 0; } }
-#city .cx-birds { left: 0; right: 0; top: calc(env(safe-area-inset-top) + 4%); height: 140px; opacity: var(--birds, 0); }
-#city .cx-birds b { position: absolute; inset: 0; background: url('../art/city/birds-a.png') 0 0 / 400px 140px repeat-x; animation: birdfly 50s linear infinite; }
-#city .cx-birds b.f2 { background-image: url('../art/city/birds-b.png'); animation: birdfly 50s linear infinite, blink 0.7s steps(1) infinite; }
+#city .cx-birds { left: 0; right: 0; top: calc(env(safe-area-inset-top) + 4%); height: 140px; opacity: var(--birds, 0); animation: bob 9s steps(8) infinite; }
+/* a 4-step wingbeat (up, level, down, level), each bird at its own point in the beat */
+#city .cx-birds b { position: absolute; inset: 0; background: url('../art/city/birds-0.png') 0 0 / 400px 140px repeat-x; animation: birdfly 50s linear infinite, frame4 0.9s steps(1) infinite; }
+#city .cx-birds b.f1 { background-image: url('../art/city/birds-1.png'); animation-delay: 0s, -0.675s; }
+#city .cx-birds b.f2 { background-image: url('../art/city/birds-2.png'); animation-delay: 0s, -0.45s; }
+#city .cx-birds b.f3 { background-image: url('../art/city/birds-3.png'); animation-delay: 0s, -0.225s; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
 @keyframes birdfly { to { background-position: 400px 0; } }
 #city .cx-gloom { inset: 0; background: #0a0d14; opacity: var(--gloom, 0); }
 #city .cx-rain { inset: 0; opacity: var(--rain, 0); background: url('../art/city/rain.png') 0 0 / 128px 192px repeat; }
@@ -973,7 +1004,7 @@ html[data-theme="dusk"][data-sky="night"] { background: #07080f; }
 @keyframes flash { 0%, 91%, 100% { opacity: 0; } 92% { opacity: 0.2; } 93% { opacity: 0.04; } 94% { opacity: 0.14; } 95.5% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   #city *, #city .cx-birds b { animation: none !important; }
-  #city .cl-ref-b, #city .cx-stars.b, #city .cx-birds b.f2 { display: none; }
+  #city .cl-ref-b, #city .cl-ref-c, #city .cl-ref-d, #city .cx-stars.b, #city .cx-stars.c, #city .cx-birds b.f1, #city .cx-birds b.f2, #city .cx-birds b.f3, #city .ov, #city .cx-pod { display: none; }
 }
 /* panels pick up a little of the sky: cool slate by day, deeper at night */
 [data-theme="dusk"][data-sky="day"] { --face: rgba(14, 22, 34, 0.93); --field: rgba(0, 8, 20, 0.36); }
@@ -1303,3 +1334,46 @@ body.glance { padding-bottom: 0; overflow: hidden; }
 @keyframes glPulse { 50% { opacity: 0.25; } }
 body.from-glance #app { animation: glIn 0.35s ease both; }
 @media (prefers-reduced-motion: reduce) { .glance-view, .gl-tap, body.from-glance #app { animation: none; } }
+
+/* ---------- Glance billboard: today's numbers on an LED screen bolted to the buildings, behind the side tower ---------- */
+#city .cx-bb { display: none; position: absolute; left: 150px; bottom: calc(var(--wl) + 26px); width: 178px; padding: 3px;
+  background: #1b130e; box-shadow: 0 0 0 1px #3a2919, 0 2px 0 1px #0d0806; image-rendering: pixelated; }
+body.bb-on #city .cx-bb { display: block; animation: bbOn 1.1s steps(5) both; }
+@keyframes bbOn { 0% { opacity: 0; } 40% { opacity: 0.6; } 60% { opacity: 0.25; } 100% { opacity: 1; } }  /* flickers on like a real sign */
+/* two little lamps on arms lighting the board from above */
+#city .cx-bb .bb-lamp { position: absolute; top: -9px; width: 10px; height: 3px; background: #2c1f15; }
+#city .cx-bb .bb-lamp::before { content: ''; position: absolute; left: 4px; top: 3px; width: 2px; height: 6px; background: #2c1f15; }
+#city .cx-bb .bb-lamp::after { content: ''; position: absolute; left: -8px; top: 3px; width: 26px; height: 22px; background: radial-gradient(ellipse at 50% 0%, rgba(255, 200, 120, 0.22), rgba(255, 200, 120, 0) 70%); }
+#city .cx-bb .bb-lamp.l { left: 28px; } #city .cx-bb .bb-lamp.r { right: 28px; }
+#city .bb-screen { position: relative; overflow: hidden; background: #0b0705; padding: 5px 7px 4px; color: #ffb257;
+  font-family: 'VT323', monospace; line-height: 1; text-shadow: 0 0 4px rgba(255, 150, 50, 0.7); }
+#city .bb-screen::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 3px); }   /* LED rows */
+#city .bb-cal { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+#city .bb-cal b { font-weight: 400; font-size: 34px; color: #ffc77e; }
+#city .bb-cal span { font-size: 15px; opacity: 0.8; }
+#city .bb-bar { height: 5px; margin: 3px 0 5px; background: rgba(255, 160, 60, 0.13); }
+#city .bb-bar span { display: block; height: 100%; background: repeating-linear-gradient(90deg, #ffb257 0 5px, transparent 5px 6px); }
+#city .bb-macs { display: flex; justify-content: space-between; font-size: 15px; white-space: nowrap; }
+#city .bb-macs em { font-style: normal; margin-right: 2px; }
+#city .bb-macs em.p { color: #6fcfff; } #city .bb-macs em.c { color: #8fe06c; } #city .bb-macs em.f { color: #ff9cc4; }
+#city .bb-macs small { font-size: 12px; opacity: 0.6; }
+#city .bb-tick { margin-top: 4px; font-size: 13px; white-space: nowrap; overflow: hidden; opacity: 0.75; }
+#city .bb-tick span { display: inline-block; padding-right: 18px; animation: tick 16s steps(160) infinite; }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+/* daylight: no glow, the frame picks up the slate of the city */
+[data-sky="day"] #city .cx-bb, [data-sky="golden"] #city .cx-bb { background: #1f2a37; box-shadow: 0 0 0 1px #3c4b5e, 0 2px 0 1px #111821; }
+[data-sky="day"] #city .bb-screen { text-shadow: none; }
+[data-sky="day"] #city .cx-bb .bb-lamp::after { display: none; }
+/* its glow in the water below */
+#city .cx-bbref { display: none; left: 158px; width: 162px; top: calc(100% - var(--wl) + 3px); height: 40px; opacity: 0.32;
+  background: repeating-linear-gradient(to bottom, rgba(255, 170, 80, 0.6) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, transparent 0 9px, rgba(11, 8, 6, 0.9) 9px 13px, transparent 13px 22px);
+  -webkit-mask-image: radial-gradient(ellipse 50% 100% at 50% 0%, #000 30%, transparent 100%); mask-image: radial-gradient(ellipse 50% 100% at 50% 0%, #000 30%, transparent 100%);
+  animation: bbref 1.6s steps(4) infinite; }
+body.bb-on #city .cx-bbref { display: block; }
+[data-sky="day"] #city .cx-bbref { opacity: 0.18; }
+@keyframes bbref { 0%, 100% { background-position: 0 0; } 50% { background-position: 2px 2px; } }
+/* with the billboard showing, the floating numbers step aside (other color schemes keep them) */
+body.bb-on .gl-box { display: none; }
+@media (prefers-reduced-motion: reduce) { #city .bb-tick span, #city .cx-bbref, body.bb-on #city .cx-bb { animation: none; } }
